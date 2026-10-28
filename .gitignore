@@ -1,0 +1,49 @@
+# Compilacao, executaveis e pacotes locais
+**/bin/
+**/obj/
+/app/
+/releases/
+/artifacts/
+/TestResults/
+**/TestResults/
+*.exe
+*.dll
+*.pdb
+*.zip
+*.nupkg
+*.snupkg
+
+# Visual Studio e preferencias pessoais
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Temporarios, logs e backups
+/work/
+/tmp/
+/temp/
+/backups/
+*.log
+*.tmp
+*.bak
+*.dmp
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Credenciais e configuracao privada
+.env
+.env.*
+*.pfx
+*.p12
+*.pem
+*.key
+*.snk
+credentials.json
+secrets.json
+appsettings.Local.json
+appsettings.*.Local.json

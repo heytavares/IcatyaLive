@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MoabLive/MoabLive.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MoabLive.Checks/MoabLive.Checks.csproj" />
+  </Folder>
+</Solution>

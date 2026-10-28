@@ -1,0 +1,18 @@
+MoabLive 0.2 - Resumo da verificação
+26/10/2026
+
+PASS: compilação Release sem avisos ou erros.
+PASS: convites inválidos, incompletos, grandes e expirados rejeitados.
+PASS: resposta de outra sessão rejeitada.
+PASS: conexão ICE/DTLS local em duas sessões novas.
+PASS: nenhum envio antes de iniciar o compartilhamento.
+PASS: vídeo VP8 enviado, recebido e decodificado com conferência dos pixels.
+PASS: perfis 640x352 e 1280x720, oito quadros recebidos em cada teste.
+PASS: pausa, retomada, nenhum novo envio após parar e descarte repetido.
+PASS: descoberta de endereço externo pelo STUN público.
+PASS: interface com captura real e segunda janela receptora; parada limpa a imagem remota.
+PASS: abertura do pacote independente do Visual Studio e contraste revisado.
+
+PENDENTE: conexão entre computadores em redes diferentes.
+PENDENTE: áudio, 1080p60, GPU, adaptação à rede e desempenho durante jogos.
+O teste local não comprova atravessamento de NAT entre redes distintas.
