@@ -1,63 +1,63 @@
 # MoabLive
 
-Aplicativo Windows em C# e WPF para compartilhar tela por conexão direta entre computadores. Versão atual: **0.2 experimental**, sem áudio e com vídeo de teste a até 10 fps. 1080p60 e aceleração por GPU ainda não estão implementados.
+Aplicativo Windows em C# e WPF para compartilhar tela por conexão direta. Versão atual: **0.3.1 experimental**, com H.264 e codificação por GPU ou CPU. Ainda sem áudio. Neste PC, a captura e transmissão locais mediram perto de 30 fps; 60 fps estáveis ainda não foram atingidos.
 
 ## Projeto principal
 
-A raiz do repositório é esta pasta **MoabLive**. Abra **MoabLive.slnx** no Visual Studio para carregar o aplicativo e os testes.
+Abra **MoabLive.slnx** no Visual Studio.
 
 - Aplicativo: `src/MoabLive/MoabLive.csproj`.
-- Testes de integração: `tests/MoabLive.Checks/MoabLive.Checks.csproj`.
-- Tecnologia: .NET 10, Windows x64, WPF.
+- Testes: `tests/MoabLive.Checks/MoabLive.Checks.csproj`.
+- Tecnologia: .NET 10, Windows x64 e WPF.
 
-## Organização
+## Pastas
 
-```text
-MoabLive/
-├── src/MoabLive/             Código do aplicativo
-│   ├── Models/              Quadros e perfis de captura
-│   └── Services/            Captura, convites e conexão
-├── tests/MoabLive.Checks/    Verificações de integração
-├── docs/                    Instruções e resultados de testes
-├── scripts/                 Automação do envio ao GitHub
-├── app/                     Aplicativo pronto local — ignorado pelo Git
-├── releases/                Pacotes ZIP locais — ignorados pelo Git
-├── MoabLive.slnx            Solução para abrir no Visual Studio
-├── Iniciar MoabLive.cmd     Abre o aplicativo
-└── Enviar para GitHub.cmd   Cria commit e envia as alterações
-```
+- `src`: código, modelos e serviços de captura/conexão/vídeo.
+- `tests`: verificações de integração e medição de captura.
+- `docs`: guias, resultados e requisitos.
+- `scripts`: preparação dos componentes de vídeo e envio ao GitHub.
+- `app`, `releases`, `native` e `work`: arquivos locais, ignorados pelo Git.
 
-O Visual Studio também pode criar `.vs/`, `bin/` e `obj/`. Essas pastas são locais e não são enviadas.
+## Abrir
 
-## Abrir o aplicativo
+Execute **Iniciar MoabLive.cmd**. O iniciador abre o pacote 0.3.1 pronto, quando presente. A versão 0.2 continua guardada em `app/0.2` como opção de retorno.
 
-Na instalação local preparada, execute **Iniciar MoabLive.cmd**. Se o aplicativo pronto não estiver presente, o iniciador tenta executar o projeto a partir dos fontes; nesse caso, precisa do SDK .NET 10 e do desenvolvimento desktop para .NET.
+Se clonou apenas os fontes: execute **Preparar video.cmd** uma vez para baixar os componentes locais. Depois execute o iniciador, com o SDK .NET 10 e desenvolvimento desktop instalados.
 
-Para testar a conexão sozinho ou com um amigo, consulte [o guia de uso](docs/USO.md). A conexão direta entre redes diferentes ainda precisa ser validada; algumas redes exigem retransmissão, que esta versão não oferece.
+## Testar
+
+Clique em **Testar neste PC**, aguarde conectar, escolha o monitor e o perfil e clique em **Transmitir tela**. Confira a segunda janela e depois teste **Parar captura**. Comece em **720p30**. Os perfis de 60 fps são metas experimentais; confira a medição na interface.
+
+Para usar com um amigo, ambos precisam da 0.3. Veja [o guia de uso](docs/USO.md). STUN público auxilia a conexão, sem retransmitir a tela; algumas redes continuam exigindo retransmissão, que o MoabLive não oferece.
+
+[Correção de conexão e tela receptora da 0.3.1](docs/CORRECAO-0.3.1.md).
+
+## Evolução
+
+[Detalhes e medições da 0.3](docs/VIDEO-0.3.md). [Áudio seletivo por aplicativo](docs/AUDIO-POR-APLICATIVO.md) é um requisito futuro: nenhuma captura de áudio existe nesta versão.
 
 ## Enviar ao GitHub
 
-Repositório: https://github.com/heytavares/MoabLive
+Execute **Enviar para GitHub.cmd**. Destino: https://github.com/heytavares/MoabLive. O script inclui fontes, testes, documentação e scripts, cria um commit quando há alterações e envia para a branch atual. Credenciais, executáveis, DLLs, ZIPs, caches e componentes baixados ficam de fora. Não realiza push forçado.
 
-Execute **Enviar para GitHub.cmd** na raiz. Ele inclui código, testes, documentação e scripts, cria um commit quando existem alterações e faz o envio para a branch atual no GitHub. O nome e o e-mail do autor são solicitados se não estiverem configurados. O Git pode pedir sua autenticação do GitHub.
-
-Executáveis, bibliotecas baixadas, ZIPs, caches do Visual Studio, arquivos temporários, logs e arquivos comuns de credenciais ficam excluídos. O script também limita as pastas incluídas e interrompe o envio se encontrar arquivos privados comuns ou arquivos acima de 10 MB. Isso não substitui revisar o código antes de incluir senhas ou outros dados privados.
-
-O script não faz push forçado e não resolve divergências ou conflitos automaticamente. Se o repositório remoto tiver alterações incompatíveis, o envio para sem sobrescrever o histórico remoto.
-
-Detalhes: [guia do GitHub](docs/GITHUB.md).
+[Instruções do GitHub](docs/GITHUB.md). Nenhum commit ou push é realizado automaticamente ao abrir o programa ou preparar seus componentes.
 
 ## Compilar e verificar
 
-Com o SDK .NET 10 instalado, na raiz:
+Com os componentes preparados e o SDK .NET 10, execute na raiz:
 
 ```powershell
 dotnet build MoabLive.slnx -c Release
 dotnet run --project tests/MoabLive.Checks/MoabLive.Checks.csproj -c Release
 ```
 
-As verificações criam conexões locais e verificam quadros reais de vídeo. Consulte [o registro de validação da versão 0.2](docs/VERIFICACAO-0.2.txt). O teste local não comprova conectividade entre redes distintas.
+Medição opcional, que captura o monitor principal e envia para um receptor local por alguns segundos, sem gravar imagens:
+
+```powershell
+dotnet run --project tests/MoabLive.Checks/MoabLive.Checks.csproj -c Release -- --capture-benchmark
+```
 
 ## Dependências
 
-SIPSorcery 10.0.17 e SIPSorcery.VP8 10.0.17, restaurados pelo NuGet. As dependências compiladas não precisam ser enviadas ao repositório. Os avisos e licenças acompanham o pacote local de distribuição.
+SIPSorcery 10.0.17 e FFmpeg.AutoGen 8.1.0, restaurados pelo NuGet. O script de preparação mantém o FFmpeg compartilhado separado dos fontes. Consulte as licenças, a origem e as instruções de reconstrução nos avisos do pacote. Nenhuma licença dos componentes de terceiros é substituída pelo código do aplicativo.
+

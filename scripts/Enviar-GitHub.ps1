@@ -19,7 +19,7 @@ function Get-ProjectPaths {
     $candidates = @(
         'src', 'tests', 'docs', 'scripts', '.github', '.gitignore', '.gitattributes',
         '.editorconfig', 'README.md', 'MoabLive.slnx', 'Iniciar MoabLive.cmd',
-        'Enviar para GitHub.cmd', 'LICENSE', 'LICENSE.md'
+        'Enviar para GitHub.cmd', 'Preparar video.cmd', 'LICENSE', 'LICENSE.md'
     )
     @($candidates | Where-Object {
         (Test-Path -LiteralPath (Join-Path $projectRoot $_)) -or
@@ -33,7 +33,7 @@ function Assert-SendableFiles {
         $normalized = $file.Replace('\', '/')
         $allowed = $normalized -match '^(src|tests|docs|scripts|\.github)/' -or
             $normalized -in @('.gitignore', '.gitattributes', '.editorconfig', 'README.md',
-                'MoabLive.slnx', 'Iniciar MoabLive.cmd', 'Enviar para GitHub.cmd', 'LICENSE', 'LICENSE.md')
+                'MoabLive.slnx', 'Iniciar MoabLive.cmd', 'Enviar para GitHub.cmd', 'Preparar video.cmd', 'LICENSE', 'LICENSE.md')
         if (!$allowed) { throw "Arquivo fora das pastas do projeto preparado para envio: $file" }
         if ($normalized -match '(?i)(^|/)(bin|obj|\.vs|app|releases|TestResults)/|(^|/)(\.env($|\.)|credentials\.json$|secrets\.json$)|\.(exe|dll|pdb|zip|pfx|p12|pem|key|snk|user|log|tmp|bak|dmp)$') {
             throw "Arquivo local ou privado preparado para envio: $file. Retire-o do envio antes de continuar."
@@ -125,4 +125,5 @@ catch {
     Write-Host 'Voce pode executar novamente depois de corrigir o problema.'
     exit 1
 }
+
 

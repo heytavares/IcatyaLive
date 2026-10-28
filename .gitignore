@@ -47,3 +47,6 @@ credentials.json
 secrets.json
 appsettings.Local.json
 appsettings.*.Local.json
+
+# Componentes de video baixados localmente
+/native/

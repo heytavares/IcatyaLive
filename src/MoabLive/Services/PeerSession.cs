@@ -7,24 +7,51 @@ using System.Threading.Tasks;
 using MoabLive.Models;
 using SIPSorcery.Net;
 using SIPSorceryMedia.Abstractions;
-using Vpx.Net;
+using MoabLive.Services.Video;
+using System.Diagnostics;
 
 namespace MoabLive.Services;
 
 // Owns one peer and its codec. Encoding/decoding never runs on the WPF dispatcher.
 public sealed class PeerSession : IDisposable
 {
+    public const int ManualSignalingTimeoutSeconds = 120;
+    static PeerSession()
+    {
+        // This library exposes a process-wide timeout. Allow time for manual chat exchange.
+        RtpIceChannel.FAILED_TIMEOUT_PERIOD = ManualSignalingTimeoutSeconds;
+    }
     private readonly RTCPeerConnection _peer;
-    private readonly Vp8NetVideoEncoderEndPoint _codec = new();
+    private readonly H264VideoCodec _codec = new();
     private readonly object _codecGate = new();
     private readonly object _sendGate = new();
     private RTCDataChannel? _control;
     private bool _disposed;
     private bool _canSend;
+    private bool _remoteApplied;
+    private long _networkFrames, _decodedFrames, _decodeErrors, _stunMessages, _sentFrames;
+    public string DiagnosticSummary()
+    {
+        var candidates = _peer.GetRtpChannel().Candidates;
+        return $"MoabLive 0.3.1\nPapel: {(_isSender ? "transmite" : "assiste")}\nSessão: {_session.ToString("N")[..8]}\nDados do outro lado aplicados: {_remoteApplied}\nConexão: {_peer.connectionState}\nVerificação da rede: {_peer.iceConnectionState}\nColeta de endereços: {_peer.iceGatheringState}\nEndereços locais disponíveis: {candidates.Count}\nRespostas STUN/ICE recebidas: {Interlocked.Read(ref _stunMessages)}\nQuadros encaminhados para envio: {Interlocked.Read(ref _sentFrames)}\nQuadros recebidos da rede: {Interlocked.Read(ref _networkFrames)}\nQuadros decodificados: {Interlocked.Read(ref _decodedFrames)}\nErros de decodificação: {Interlocked.Read(ref _decodeErrors)}\nCompartilhamento ativo neste PC: {_canSend}\n";
+    }
     private readonly bool _isSender;
     private readonly TaskCompletionSource _ready = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Guid _session;
-    private int _encodedFrames;
+    private CaptureProfile _profile = CaptureProfile.Available[0];
+    private long _lastPacketAt;
+    private long _lastSharingStateAt;
+    public string EncodingDescription => _codec.HardwareAccelerated ? _codec.EncoderName + " · GPU" : _codec.EncoderName + " · CPU";
+    public string FallbackReason => _codec.FallbackReason;
+    public void ConfigureVideo(CaptureProfile profile, bool softwareOnly = false)
+    {
+        lock (_sendGate) lock (_codecGate)
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(PeerSession));
+            _codec.Configure(profile, softwareOnly);
+            _profile = profile;
+        }
+    }
     public bool IsConnected => !_disposed && _peer.connectionState == RTCPeerConnectionState.connected;
     public bool IsSender => _isSender;
     public event Action<string>? StatusChanged;
@@ -42,35 +69,27 @@ public sealed class PeerSession : IDisposable
         {
             iceServers = useStun ? new List<RTCIceServer> { new() { urls = "stun:stun.cloudflare.com:3478" } } : new()
         });
-        _peer.addTrack(new MediaStreamTrack(_codec.GetVideoSourceFormats(),
+        var formats = new List<VideoFormat>
+        {
+            new(VideoCodecsEnum.H264, 96, 90000, "packetization-mode=1;profile-level-id=42e02a;level-asymmetry-allowed=1")
+        };
+        _peer.addTrack(new MediaStreamTrack(formats,
             sender ? MediaStreamStatusEnum.SendOnly : MediaStreamStatusEnum.RecvOnly));
-        _peer.OnVideoFormatsNegotiated += formats =>
-        {
-            lock (_codecGate)
-            {
-                if (_disposed) return;
-                _codec.SetVideoSourceFormat(formats.First());
-                _codec.SetVideoSinkFormat(formats.First());
-            }
-        };
-        _codec.OnVideoSourceEncodedSample += (duration, sample) =>
-        {
-            if (IsConnected) _peer.SendVideo(duration, sample);
-        };
+        _peer.GetRtpChannel().OnStunMessageReceived += (_, _, _) => Interlocked.Increment(ref _stunMessages);
         _peer.OnVideoFrameReceived += (endpoint, timestamp, encoded, format) =>
         {
             if (_disposed || _isSender) return;
+            Interlocked.Increment(ref _networkFrames);
             try
             {
                 lock (_codecGate)
-                    if (!_disposed) _codec.GotVideoFrame(endpoint, timestamp, encoded, format);
+                    if (!_disposed) _codec.Decode(encoded, frame =>
+                    {
+                        Interlocked.Increment(ref _decodedFrames);
+                        FrameReceived?.Invoke(frame);
+                    });
             }
-            catch (Exception) { StatusChanged?.Invoke("Quadro perdido. Aguardando a próxima imagem completa…"); }
-        };
-        _codec.OnVideoSinkDecodedSample += (pixels, width, height, stride, format) =>
-        {
-            if (_disposed || width is 0 or > 1920 || height is 0 or > 1080) return;
-            FrameReceived?.Invoke(new VideoFrame(pixels, (int)width, (int)height, stride));
+            catch (Exception) { Interlocked.Increment(ref _decodeErrors); StatusChanged?.Invoke("Recebendo dados, mas aguardando uma imagem de vídeo completa…"); }
         };
         _peer.onconnectionstatechange += state =>
         {
@@ -83,7 +102,7 @@ public sealed class PeerSession : IDisposable
                 case RTCPeerConnectionState.connecting:
                     StatusChanged?.Invoke("Tentando conectar diretamente ao outro PC…"); break;
                 case RTCPeerConnectionState.failed:
-                    StatusChanged?.Invoke("A conexão direta falhou. A rede pode exigir um retransmissor.");
+                    StatusChanged?.Invoke("Não foi possível conectar. Confira a troca de convite/resposta e copie o diagnóstico para investigar a rede.");
                     ConnectionLost?.Invoke(); break;
                 case RTCPeerConnectionState.disconnected:
                 case RTCPeerConnectionState.closed:
@@ -121,7 +140,8 @@ public sealed class PeerSession : IDisposable
     public void ApplyAnswer(string code)
     {
         var invite = InviteCodec.Decode(code);
-        if (!_isSender || invite.Kind != "answer" || invite.Session != _session)
+        if (invite.Kind != "answer") throw new InvalidOperationException("Este texto é um convite. Neste PC, cole a resposta gerada pelo computador que vai assistir.");
+        if (!_isSender || invite.Session != _session)
             throw new InvalidOperationException("Esta resposta não pertence ao convite aberto nesta janela.");
         ApplyRemote(invite);
     }
@@ -132,6 +152,7 @@ public sealed class PeerSession : IDisposable
         { type = invite.Kind == "offer" ? RTCSdpType.offer : RTCSdpType.answer, sdp = invite.Sdp });
         if (result != SetDescriptionResultEnum.OK)
             throw new InvalidOperationException("Não foi possível aceitar os dados da conexão: " + result);
+        _remoteApplied = true;
     }
 
     private async Task GatherAsync(CancellationToken cancellation)
@@ -168,23 +189,40 @@ public sealed class PeerSession : IDisposable
         lock (_sendGate)
         {
             _canSend = enabled && _isSender && !_disposed;
-            if (_control?.readyState == RTCDataChannelState.open) _control.send(_canSend ? "started" : "paused");
-            if (_canSend) lock (_codecGate) _codec.ForceKeyFrame();
+            if (_control?.readyState == RTCDataChannelState.open)
+            {
+                _control.send(_canSend ? "started" : "paused");
+                _lastSharingStateAt = Stopwatch.GetTimestamp();
+            }
+            if (_canSend) { _lastPacketAt = 0; lock (_codecGate) _codec.ForceKeyFrame(); }
         }
     }
 
-    public void SendFrame(VideoFrame frame, uint durationMilliseconds)
+    public void SendFrame(VideoFrame frame)
     {
         lock (_sendGate)
         {
             if (!_canSend || !IsConnected) return;
+            if (_control?.readyState == RTCDataChannelState.open &&
+                (_lastSharingStateAt == 0 || Stopwatch.GetElapsedTime(_lastSharingStateAt).TotalSeconds >= 1))
+            {
+                _control.send("started");
+                _lastSharingStateAt = Stopwatch.GetTimestamp();
+            }
             try
             {
                 lock (_codecGate)
                 {
-                    if ((_encodedFrames++ % 10) == 0) _codec.ForceKeyFrame();
-                    _codec.ExternalVideoSourceRawSample(durationMilliseconds, frame.Width, frame.Height,
-                        frame.Pixels, VideoPixelFormatsEnum.Bgr);
+                    var encoded = _codec.Encode(frame);
+                    if (encoded != null)
+                    {
+                        long now = Stopwatch.GetTimestamp();
+                        uint duration = _lastPacketAt == 0 ? (uint)(90000 / _profile.FramesPerSecond) :
+                            (uint)Math.Clamp(Stopwatch.GetElapsedTime(_lastPacketAt, now).TotalSeconds * 90000, 1, 450000);
+                        _lastPacketAt = now;
+                        _peer.SendVideo(duration, encoded);
+                        Interlocked.Increment(ref _sentFrames);
+                    }
                 }
             }
             catch (Exception ex) { Error?.Invoke("Não foi possível codificar o vídeo: " + ex.Message); }
@@ -204,5 +242,11 @@ public sealed class PeerSession : IDisposable
         }
     }
 }
+
+
+
+
+
+
 
 

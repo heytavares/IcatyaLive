@@ -15,7 +15,7 @@ namespace MoabLive;
 public partial class MainWindow : Window
 {
     private readonly ScreenCaptureService _capture = new();
-    private readonly DispatcherTimer _renderTimer = new() { Interval = TimeSpan.FromMilliseconds(33) };
+    private readonly DispatcherTimer _renderTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
     private readonly CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _captureCancellation;
     private Task? _captureTask;
@@ -44,6 +44,7 @@ public partial class MainWindow : Window
         Displays.SelectedIndex = 0;
         Profiles.ItemsSource = CaptureProfile.Available;
         Profiles.SelectedIndex = 0;
+        UpdateControls();
         _renderTimer.Tick += RenderLatest;
         Closing += async (_, args) =>
         {
@@ -75,7 +76,19 @@ public partial class MainWindow : Window
         bool receiving = _peer is { IsSender: false };
         OfferButton.IsEnabled = AcceptButton.IsEnabled = SoloButton.IsEnabled = !_busy && _peer == null;
         Incoming.IsEnabled = !_busy;
-        AnswerButton.IsEnabled = !_busy && _peer is { IsSender: true, IsConnected: false } && !_answerApplied;
+        Incoming.IsReadOnly = receiving || _answerApplied;
+        OfferButton.Visibility = receiving ? Visibility.Collapsed : Visibility.Visible;
+        AcceptButton.Visibility = _peer is { IsSender: true } ? Visibility.Collapsed : Visibility.Visible;
+        AnswerButton.Visibility = _peer is { IsSender: true } ? Visibility.Visible : Visibility.Collapsed;
+        RoleHint.Text = _peer == null ? "Escolha: transmitir sua tela ou assistir a outro PC." :
+            receiving ? "VOCÊ ASSISTE · devolva a resposta ao transmissor" :
+            _answerApplied ? "VOCÊ TRANSMITE · resposta aplicada" : "VOCÊ TRANSMITE · envie o convite e aguarde a resposta";
+        IncomingHint.Text = _peer is { IsSender: true } ? "Cole AQUI a resposta enviada pelo PC que vai assistir:" :
+            receiving ? "Convite aceito. Copie a resposta gerada abaixo:" : "Para assistir, cole AQUI o convite recebido:";
+        OutgoingHint.Text = receiving ? "Sua RESPOSTA: envie este texto ao PC que criou o convite." :
+            _peer != null ? "Seu CONVITE: envie este texto ao PC que vai assistir." : "O texto gerado aparecerá aqui.";
+        CopyButton.Content = receiving ? "Copiar resposta" : "Copiar convite";
+        AnswerButton.IsEnabled = !_busy && _peer is { IsSender: true, IsConnected: false } && !_answerApplied && !string.IsNullOrWhiteSpace(Incoming.Text);
         DisconnectButton.IsEnabled = !_busy && _peer != null;
         CopyButton.IsEnabled = !_busy && !string.IsNullOrEmpty(Outgoing.Text);
         StartButton.IsEnabled = !_busy && !capturing && !receiving && (_peer == null || _peer.IsConnected);
@@ -108,6 +121,11 @@ public partial class MainWindow : Window
         {
             if (_peer != peer) return;
             SetStatus(message);
+            if (peer.IsConnected && !peer.IsSender)
+            {
+                _renderEnabled = true;
+                if (!_remotePaused) _renderTimer.Start();
+            }
             UpdateControls();
         });
         peer.FrameReceived += frame =>
@@ -124,9 +142,11 @@ public partial class MainWindow : Window
         peer.RemoteResumed += () => OnUi(() =>
         {
             if (_peer != peer) return;
+            bool wasWaiting = _remotePaused || !_renderEnabled;
             _remotePaused = false;
+            _renderEnabled = true;
             _renderTimer.Start();
-            SetStatus("O outro lado iniciou a transmissão.");
+            if (wasWaiting) SetStatus("O outro lado iniciou a transmissão.");
         });
         peer.ConnectionLost += () => OnUi(async () =>
         {
@@ -141,6 +161,11 @@ public partial class MainWindow : Window
             if (_peer != peer) return;
             await StopCaptureAsync();
             SetStatus(message);
+            if (peer.IsConnected && !peer.IsSender)
+            {
+                _renderEnabled = true;
+                if (!_remotePaused) _renderTimer.Start();
+            }
             UpdateControls();
         });
         if (!sender) { _renderEnabled = true; _renderTimer.Start(); }
@@ -191,16 +216,31 @@ public partial class MainWindow : Window
     {
         try
         {
-            await peer.Ready.WaitAsync(TimeSpan.FromSeconds(35), _lifetime.Token);
+            await peer.Ready.WaitAsync(TimeSpan.FromSeconds(peer.IsSender ? 40 : PeerSession.ManualSignalingTimeoutSeconds + 10), _lifetime.Token);
             if (_peer == peer) UpdateControls();
         }
         catch (TimeoutException)
         {
-            if (_peer == peer) SetStatus("Não conectou em 35 segundos. Confira a resposta e o firewall; esta rede pode impedir conexão direta. Desconecte para tentar novamente.");
+            if (_peer == peer) SetStatus("Ainda não conectou. Confirme que a resposta foi aplicada no PC que criou o convite. Copie o diagnóstico se o problema continuar.");
         }
         catch (OperationCanceledException) { }
     }
 
+    private void IncomingChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (IsLoaded) UpdateControls();
+    }
+    private void CopyDiagnostic(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var diagnostic = _peer?.DiagnosticSummary() ?? "MoabLive 0.3.1: nenhuma sessão aberta.\n";
+            diagnostic += $"Exibição habilitada: {_renderEnabled}\nPausa informada pelo outro lado: {_remotePaused}\n";
+            System.Windows.Clipboard.SetText(diagnostic);
+            SetStatus("Diagnóstico copiado. Ele não inclui convites, senhas ou endereços IP.");
+        }
+        catch (Exception) { SetStatus("Não foi possível copiar o diagnóstico. Tente novamente."); }
+    }
     private async void CopyCode(object sender, RoutedEventArgs e)
     {
         try { System.Windows.Clipboard.SetText(Outgoing.Text); SetStatus("Texto copiado. Envie ao outro lado pelo chat."); }
@@ -258,6 +298,14 @@ public partial class MainWindow : Window
         var profile = (CaptureProfile)Profiles.SelectedItem;
         var peer = _peer;
         if (peer is { IsConnected: false }) throw new InvalidOperationException("Aguarde a conexão antes de transmitir.");
+        if (peer != null)
+        {
+            SetStatus("Preparando o codificador de vídeo…");
+            await Task.Run(() => peer.ConfigureVideo(profile));
+            VideoEngine.Text = "Compressão: " + peer.EncodingDescription;
+            VideoEngine.ToolTip = string.IsNullOrEmpty(peer.FallbackReason) ? null : peer.FallbackReason;
+        }
+        else VideoEngine.Text = "Prévia local · sem compressão ou envio";
         _captureCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
         _renderEnabled = true;
         _renderTimer.Start();
@@ -268,7 +316,7 @@ public partial class MainWindow : Window
         {
             if (_captureCancellation?.IsCancellationRequested != false) return;
             QueueFrame(frame);
-            peer?.SendFrame(frame, (uint)(1000 / profile.FramesPerSecond));
+            peer?.SendFrame(frame);
         }, _captureCancellation.Token);
         _ = ObserveCaptureAsync(_captureTask);
         SetStatus(peer == null ? "Prévia local ativa. Nenhuma imagem enviada." : "Transmitindo a tela ao outro PC. Use Parar captura para interromper.");
@@ -313,12 +361,13 @@ public partial class MainWindow : Window
     private void QueueFrame(VideoFrame frame)
     {
         // A single-slot mailbox replaces an older unrendered frame; the UI cannot build a queue.
-        Interlocked.Exchange(ref _latestFrame, frame);
+        var previous = Interlocked.Exchange(ref _latestFrame, frame.Retain());
+        previous?.Dispose();
         Interlocked.Increment(ref _frameCount);
     }
     private void RenderLatest(object? sender, EventArgs e)
     {
-        var frame = Interlocked.Exchange(ref _latestFrame, null);
+        using var frame = Interlocked.Exchange(ref _latestFrame, null);
         if (_renderEnabled && frame != null)
         {
             if (_displayBitmap == null || _displayBitmap.PixelWidth != frame.Width || _displayBitmap.PixelHeight != frame.Height)
@@ -346,7 +395,7 @@ public partial class MainWindow : Window
     private void ClearImage(string message)
     {
         _renderTimer.Stop();
-        Interlocked.Exchange(ref _latestFrame, null);
+        Interlocked.Exchange(ref _latestFrame, null)?.Dispose();
         _displayBitmap = null;
         Preview.Source = null;
         PlaceholderText.Text = message;
@@ -355,5 +404,9 @@ public partial class MainWindow : Window
         _lastFrameAt = default;
     }
 }
+
+
+
+
 
 
