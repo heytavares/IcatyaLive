@@ -1,0 +1,25 @@
+<Window x:Class="Icatya.ShareSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Configurar compartilhamento" Icon="/Assets/Icatya.ico"
+        Width="530" SizeToContent="Height" ResizeMode="NoResize" ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner" Background="{DynamicResource AppBackground}"
+        Foreground="{DynamicResource PrimaryText}" FontFamily="gg sans, Segoe UI Variable Text, Segoe UI" FontSize="14">
+    <StackPanel Margin="24">
+        <TextBlock Text="Compartilhar tela" FontSize="23" FontWeight="SemiBold"/>
+        <TextBlock Text="Escolha o monitor e a qualidade da imagem." Foreground="{DynamicResource SecondaryText}" Margin="0,6,0,22"/>
+        <TextBlock Text="Tela" FontWeight="SemiBold"/>
+        <ComboBox x:Name="Displays" AutomationProperties.Name="Tela para compartilhar"/>
+        <Grid Margin="0,7,0,0">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="16"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="Qualidade" FontWeight="SemiBold"/><ComboBox x:Name="Resolution" AutomationProperties.Name="Qualidade da live" SelectionChanged="SelectionChanged"/></StackPanel>
+            <StackPanel Grid.Column="2"><TextBlock Text="Quadros por segundo" FontWeight="SemiBold"/><ComboBox x:Name="FrameRate" AutomationProperties.Name="FPS da live" SelectionChanged="SelectionChanged"/></StackPanel>
+        </Grid>
+        <TextBlock x:Name="Summary" Foreground="{DynamicResource SecondaryText}" Margin="0,4,0,8"/>
+        <TextBlock Text="60 fps é uma meta experimental. O desempenho depende dos PCs e da conexão. Sem áudio nesta versão." Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,0,0,22"/>
+        <WrapPanel HorizontalAlignment="Right">
+            <Button Content="Cancelar" IsCancel="True" Style="{StaticResource Secondary}"/>
+            <Button x:Name="ConfirmButton" Content="Iniciar compartilhamento" IsDefault="True" Click="Confirm" Margin="0,0,0,8"/>
+        </WrapPanel>
+    </StackPanel>
+</Window>

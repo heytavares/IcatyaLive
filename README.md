@@ -1,13 +1,13 @@
-# MoabLive
+# Icatya
 
-Aplicativo Windows em C# e WPF para compartilhar tela por conexão direta. Versão atual: **0.3.1 experimental**, com H.264 e codificação por GPU ou CPU. Ainda sem áudio. Neste PC, a captura e transmissão locais mediram perto de 30 fps; 60 fps estáveis ainda não foram atingidos.
+Aplicativo Windows em C# e WPF para compartilhar tela por conexão direta. Versão atual: **0.5.2 experimental**, com H.264 e codificação por GPU ou CPU. O controle de cadência foi corrigido e a interface informa separadamente os fps processados/recebidos e os enviados para apresentação. Ainda sem áudio. Neste PC, a captura e transmissão locais mediram perto de 30 fps; 60 fps estáveis ainda não foram atingidos.
 
 ## Projeto principal
 
-Abra **MoabLive.slnx** no Visual Studio.
+Abra **icatyalive.slnx** no Visual Studio.
 
-- Aplicativo: `src/MoabLive/MoabLive.csproj`.
-- Testes: `tests/MoabLive.Checks/MoabLive.Checks.csproj`.
+- Aplicativo: `src/Icatya/Icatya.csproj`.
+- Testes: `tests/Icatya.Checks/Icatya.Checks.csproj`.
 - Tecnologia: .NET 10, Windows x64 e WPF.
 
 ## Pastas
@@ -20,7 +20,7 @@ Abra **MoabLive.slnx** no Visual Studio.
 
 ## Abrir
 
-Execute **Iniciar MoabLive.cmd**. O iniciador abre o pacote 0.3.1 pronto, quando presente. A versão 0.2 continua guardada em `app/0.2` como opção de retorno.
+Execute **Iniciar Icatya.cmd**. O iniciador abre o pacote 0.5.2 pronto, quando presente. A versão 0.2 continua guardada em `app/0.2` como opção de retorno.
 
 Se clonou apenas os fontes: execute **Preparar video.cmd** uma vez para baixar os componentes locais. Depois execute o iniciador, com o SDK .NET 10 e desenvolvimento desktop instalados.
 
@@ -28,7 +28,7 @@ Se clonou apenas os fontes: execute **Preparar video.cmd** uma vez para baixar o
 
 Clique em **Testar neste PC**, aguarde conectar, escolha o monitor e o perfil e clique em **Transmitir tela**. Confira a segunda janela e depois teste **Parar captura**. Comece em **720p30**. Os perfis de 60 fps são metas experimentais; confira a medição na interface.
 
-Para usar com um amigo, ambos precisam da 0.3. Veja [o guia de uso](docs/USO.md). STUN público auxilia a conexão, sem retransmitir a tela; algumas redes continuam exigindo retransmissão, que o MoabLive não oferece.
+Para usar com um amigo, ambos devem usar a 0.5.2. Veja [o guia de uso](docs/USO.md). STUN público auxilia a conexão, sem retransmitir a tela; algumas redes continuam exigindo retransmissão, que o Icatya não oferece.
 
 [Correção de conexão e tela receptora da 0.3.1](docs/CORRECAO-0.3.1.md).
 
@@ -38,7 +38,7 @@ Para usar com um amigo, ambos precisam da 0.3. Veja [o guia de uso](docs/USO.md)
 
 ## Enviar ao GitHub
 
-Execute **Enviar para GitHub.cmd**. Destino: https://github.com/heytavares/MoabLive. O script inclui fontes, testes, documentação e scripts, cria um commit quando há alterações e envia para a branch atual. Credenciais, executáveis, DLLs, ZIPs, caches e componentes baixados ficam de fora. Não realiza push forçado.
+Execute **Enviar para GitHub.cmd**. Destino: https://github.com/heytavares/IcatyaLive. O script inclui fontes, testes, documentação e scripts, cria um commit quando há alterações e envia para a branch atual. Credenciais, executáveis, DLLs, ZIPs, caches e componentes baixados ficam de fora. Não realiza push forçado.
 
 [Instruções do GitHub](docs/GITHUB.md). Nenhum commit ou push é realizado automaticamente ao abrir o programa ou preparar seus componentes.
 
@@ -47,17 +47,28 @@ Execute **Enviar para GitHub.cmd**. Destino: https://github.com/heytavares/MoabL
 Com os componentes preparados e o SDK .NET 10, execute na raiz:
 
 ```powershell
-dotnet build MoabLive.slnx -c Release
-dotnet run --project tests/MoabLive.Checks/MoabLive.Checks.csproj -c Release
+dotnet build icatyalive.slnx -c Release
+dotnet run --project tests/Icatya.Checks/Icatya.Checks.csproj -c Release
 ```
 
 Medição opcional, que captura o monitor principal e envia para um receptor local por alguns segundos, sem gravar imagens:
 
 ```powershell
-dotnet run --project tests/MoabLive.Checks/MoabLive.Checks.csproj -c Release -- --capture-benchmark
+dotnet run --project tests/Icatya.Checks/Icatya.Checks.csproj -c Release -- --capture-benchmark
 ```
 
 ## Dependências
 
 SIPSorcery 10.0.17 e FFmpeg.AutoGen 8.1.0, restaurados pelo NuGet. O script de preparação mantém o FFmpeg compartilhado separado dos fontes. Consulte as licenças, a origem e as instruções de reconstrução nos avisos do pacote. Nenhuma licença dos componentes de terceiros é substituída pelo código do aplicativo.
 
+
+
+## Identidade e tema
+
+Nome do aplicativo: **Icatya**. Nome escolhido para o projeto: **icatyalive**. A pasta principal continua chamada MoabLive para preservar seus atalhos. O endereço remoto agora é heytavares/IcatyaLive.
+
+[Paleta e mudanças da 0.5.2](docs/PALETA-0.4.md).
+
+[Desempenho e estabilidade da 0.4.1](docs/DESEMPENHO-0.4.1.md). Verificação prolongada: `dotnet run --project tests/Icatya.Checks/Icatya.Checks.csproj -c Release -- --capture-stability`.
+
+[Atualizador e publicação de versões](docs/ATUALIZACOES.md). O pacote inclui **Atualizar Icatya.cmd**; o envio dos fontes ao GitHub é separado da publicação de uma Release.

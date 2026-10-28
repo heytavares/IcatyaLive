@@ -1,20 +1,20 @@
-# Enviar o MoabLive ao GitHub
+# Enviar o Icatya ao GitHub
 
 ## Uso normal
 
 1. Salve os arquivos editados no Visual Studio.
-2. Execute **Enviar para GitHub.cmd**, na pasta principal do MoabLive.
+2. Execute **Enviar para GitHub.cmd**, na pasta principal do Icatya.
 3. Na primeira vez, se solicitado, informe seu nome e e-mail para os commits. Você pode usar o e-mail noreply fornecido pelo GitHub.
 4. Caso o Git peça autenticação, entre na sua conta pelo mecanismo de autenticação do próprio Git. Não coloque tokens no código ou no script.
 5. Aguarde a mensagem de sucesso. Se ocorrer um erro, a janela permanece aberta para você ler.
 
-Destino configurado: https://github.com/heytavares/MoabLive
+Destino configurado: https://github.com/heytavares/IcatyaLive
 
 O envio não roda automaticamente ao abrir o aplicativo. Ele só acontece quando você executa o arquivo de envio. Nenhum commit ou push foi feito ao preparar esse arquivo.
 
 ## O que ele faz
 
-- Confere se está dentro do repositório MoabLive.
+- Confere se está dentro do repositório Icatya.
 - Confere se o destino é o repositório acima.
 - Consulta o GitHub antes de preparar o envio.
 - Inclui alterações e exclusões nas pastas de código, testes, documentação e scripts, além dos arquivos de projeto na raiz.

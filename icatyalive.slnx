@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Icatya/Icatya.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Icatya.Checks/Icatya.Checks.csproj" />
+  </Folder>
+</Solution>
+

@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -12,7 +12,7 @@ $destination = Join-Path $root 'native\ffmpeg'
 try {
     New-Item -ItemType Directory -Path $cache,$destination -Force | Out-Null
     if (!(Test-Path -LiteralPath $archive) -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
-        Write-Host 'Baixando os componentes de video do MoabLive...'
+        Write-Host 'Baixando os componentes de video do Icatya...'
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $archive
     }
