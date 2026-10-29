@@ -3,7 +3,7 @@
 ## Uso normal
 
 1. Salve os arquivos editados no Visual Studio.
-2. Execute **Enviar para GitHub.cmd**, na pasta principal do Icatya.
+2. Execute seu atalho local **Enviar para GitHub.cmd**. Ele pode ficar na Área de Trabalho ou em qualquer outra pasta deste PC: aponta para o projeto em `C:\Users\andre\Documents\Codex\Projetos\Icatya`.
 3. Na primeira vez, se solicitado, informe seu nome e e-mail para os commits. Você pode usar o e-mail noreply fornecido pelo GitHub.
 4. Caso o Git peça autenticação, entre na sua conta pelo mecanismo de autenticação do próprio Git. Não coloque tokens no código ou no script.
 5. Aguarde a mensagem de sucesso. Se ocorrer um erro, a janela permanece aberta para você ler.
@@ -34,6 +34,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\Enviar-GitHub.
 Esse modo lista os arquivos candidatos e não cria commit, não prepara alterações e não usa a rede. A opção de execução vale apenas para aquele processo e não altera a configuração permanente do Windows.
 
 ## O que fica local
+
+- Todos os atalhos `.cmd` (iniciar, preparar vídeo, gerar instalador, atualizar e enviar ao GitHub). Permanecem no PC e são excluídos do controle de versão. Cópias disponíveis em `work/atalhos-locais/`; movê-las não move o projeto. Se mudar o projeto de lugar, ajuste `ICATYA_PROJECT` dentro do atalho ou defina a variável `ICATYA_PROJECT_DIRECTORY` com o novo caminho. Os scripts PowerShell de manutenção continuam versionados em `scripts/`.
 
 - `app/`: programa compilado e runtime.
 - `releases/`: arquivos ZIP.

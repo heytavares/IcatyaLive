@@ -8,7 +8,9 @@ As notas e verificações anteriores permanecem em [NOTAS-0.7.3.md](NOTAS-0.7.3.
 
 Nesta etapa foram atualizados os fontes, o texto da versão, os diagnósticos e o iniciador local. O iniciador abre os fontes atuais com o SDK .NET 10, sem preferir um pacote antigo. O envio ao GitHub mostra a versão e a pasta antes de criar um commit.
 
-Ainda não foram gerados ou publicados instalador, ZIP, tag ou Release 1.0.0. Enviar os fontes ao GitHub não altera a versão oferecida pelo atualizador. Antes da distribuição, conferir os pacotes e a atualização de uma instalação antiga, preservando o perfil.
+O instalador, o ZIP portátil e o pacote técnico do atualizador foram gerados e conferidos localmente em `releases/1.0.0/`. A tag e a Release ainda precisam ser publicadas pelo autor. Enviar os fontes ao GitHub não altera a versão oferecida pelo atualizador. Veja [o guia de lançamento](LANCAMENTO-1.0.0.md) e confira uma atualização de instalação antiga após publicar.
+
+O pacote local completo está em `app/1.0.0/` e o `iCatya.exe` iniciador da raiz o abre neste PC, conforme [INICIADOR-LOCAL.md](INICIADOR-LOCAL.md). Nenhum desses diretórios precisa ser enviado ao código do GitHub.
 
 ## Ajustes finais da live
 

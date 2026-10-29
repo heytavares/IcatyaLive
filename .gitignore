@@ -1,4 +1,6 @@
 # Compilacao, executaveis e pacotes locais
+# Atalhos pessoais: podem ser movidos para qualquer pasta deste PC.
+*.cmd
 **/bin/
 **/obj/
 /app/
