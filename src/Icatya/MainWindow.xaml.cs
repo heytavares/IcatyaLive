@@ -51,6 +51,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        InitializeLiveOverlays();
         InitializeProfile();
         InitializeAudio();
         SourceInitialized += (_, _) => Services.Windowing.DarkTitleBar.Attach(this);
@@ -66,6 +67,7 @@ public partial class MainWindow : Window
             args.Cancel = true;
             if (_closing) return;
             _closing = true;
+            _liveOverlayTimer.Stop();
             RoomPicker.IsOpen = false;
             SaveSidebarLayout();
             _lifetime.Cancel();
@@ -308,7 +310,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var diagnostic = _peer?.DiagnosticSummary() ?? "iCatya 0.7.3: nenhuma sessão aberta.\n";
+            var diagnostic = _peer?.DiagnosticSummary() ?? "iCatya 1.0.0: nenhuma sessão aberta.\n";
             diagnostic += _peer?.PerformanceSummary();
             diagnostic += _room?.PerformanceSummary();
             diagnostic += _room?.DiagnosticSummary();

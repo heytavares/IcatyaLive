@@ -265,7 +265,7 @@
             </Border>
           </Grid>
           <Border Grid.Row="1" Background="#0C0D10" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="16" ClipToBounds="True">
-            <Grid>
+            <Grid x:Name="LiveSurface" MouseEnter="LiveSurfaceActivity" MouseMove="LiveSurfaceActivity" MouseLeave="LiveSurfaceLeft" PreviewKeyDown="LiveSurfaceKeyDown">
               <StackPanel x:Name="Placeholder" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="30">
                 <controls:LucideIcon Kind="monitor" Width="44" Height="44" Foreground="{DynamicResource MutedText}" HorizontalAlignment="Center" Margin="0,0,0,18" />
                 <TextBlock x:Name="PlaceholderText" Text="Nenhuma transmissão aberta" FontSize="20" FontWeight="SemiBold" TextAlignment="Center" />
@@ -278,7 +278,7 @@
                   <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <controls:VideoGridPanel x:Name="RoomVideos" Grid.Row="0" Margin="10" />
-                <Grid x:Name="FocusSurface" Grid.Row="0" Visibility="Collapsed" MouseEnter="FocusSurfaceEntered" MouseLeave="FocusSurfaceLeft">
+                <Grid x:Name="FocusSurface" Grid.Row="0" Visibility="Collapsed">
                   <Grid x:Name="FocusHost" />
                   <Button x:Name="ExitFocusButton" Click="ExitFocus" GotKeyboardFocus="FocusBackFocused" LostKeyboardFocus="FocusBackUnfocused" HorizontalAlignment="Left" VerticalAlignment="Top" Panel.ZIndex="2" Margin="14,54,14,14" Padding="10,8" FontSize="12" Opacity="0" IsHitTestVisible="False" Style="{StaticResource Secondary}" Background="#ED202127" ToolTip="Voltar à grade (Esc)" AutomationProperties.Name="Voltar à grade">
                     <StackPanel Orientation="Horizontal">
@@ -299,7 +299,7 @@
                   <StackPanel x:Name="RoomThumbnails" HorizontalAlignment="Center" Orientation="Horizontal" />
                 </ScrollViewer>
               </Grid>
-              <Border HorizontalAlignment="Right" VerticalAlignment="Top" Background="#ED191A20" CornerRadius="12" Padding="7,4" Margin="14" ToolTip="Volume das transmissões recebidas">
+              <Border x:Name="PlaybackOverlay" HorizontalAlignment="Right" VerticalAlignment="Top" Background="#ED191A20" CornerRadius="12" Padding="7,4" Margin="14" Opacity="0" IsHitTestVisible="False" GotKeyboardFocus="FocusToggleFocused" LostKeyboardFocus="FocusToggleUnfocused" ToolTip="Volume das transmissões recebidas">
                 <StackPanel Orientation="Horizontal">
                   <Button x:Name="PlaybackMute" Width="30" Height="28" Padding="0" Margin="0,0,6,0" Style="{StaticResource IconButton}" Click="MutePlayback" AutomationProperties.Name="Silenciar ou restaurar áudio recebido">
                     <Grid>
@@ -377,7 +377,7 @@
               <TextBlock x:Name="AvatarSelectionStatus" Foreground="{DynamicResource SecondaryText}" FontSize="12" Margin="0,4,0,12" />
               <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,4,0,16" />
               <TextBlock Text="iCatya" FontSize="19" FontWeight="SemiBold" />
-              <TextBlock Text="Versão 0.7.3" Foreground="{DynamicResource SecondaryText}" Margin="0,5,0,12" />
+              <TextBlock Text="Versão 1.0.0" Foreground="{DynamicResource SecondaryText}" Margin="0,5,0,12" />
               <Button x:Name="UpdateButton" Content="Verificar atualizações" Click="CheckForUpdate" HorizontalAlignment="Left" />
               <TextBlock x:Name="UpdateStatus" Text="" Foreground="{DynamicResource SecondaryText}" TextWrapping="Wrap" Margin="0,3,0,12" />
               <TextBlock x:Name="SettingsStatus" Text="Sala e nick ficam salvos neste PC." Foreground="{DynamicResource AccentText}" FontSize="12" Margin="0,6,0,10" />

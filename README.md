@@ -1,6 +1,8 @@
 # iCatya
 
-Aplicativo Windows em C# e WPF para compartilhar telas simultâneas em salas com convite permanente, nick e retorno automático à última sala. O vídeo usa conexão direta; presença e sinalização usam um serviço separado na Cloudflare. Versão atual: **0.7.3 em desenvolvimento**, com H.264 e codificação por GPU ou CPU. O controle de cadência foi corrigido e a interface informa separadamente os fps processados/recebidos e os enviados para apresentação. Áudio estéreo seletivo por aplicativo disponível (Windows build 20348+). Seleção de janela ou monitor disponível; veja as notas e verificações desta versão. Neste PC, a captura e transmissão locais mediram perto de 30 fps; 60 fps estáveis ainda não foram atingidos.
+[Notas da versão 1.0.0](docs/NOTAS-1.0.0.md). Fontes atualizados; a Release e os downloads da 1.0.0 ainda não foram publicados.
+
+Aplicativo Windows em C# e WPF para compartilhar telas simultâneas em salas com convite permanente, nick e retorno automático à última sala. O vídeo usa conexão direta; presença e sinalização usam um serviço separado na Cloudflare. Versão atual dos fontes: **1.0.0** (pacotes ainda não publicados), com H.264 e codificação por GPU ou CPU. O controle de cadência foi corrigido e a interface informa separadamente os fps processados/recebidos e os enviados para apresentação. Áudio estéreo seletivo por aplicativo disponível (Windows build 20348+). Seleção de janela ou monitor disponível; veja as notas e verificações desta versão. Neste PC, a captura e transmissão locais mediram perto de 30 fps; 60 fps estáveis ainda não foram atingidos.
 
 [Correção de corrupção do vídeo (0.7.1 video-fix.1)](docs/CORRECAO-VIDEO-0.7.1.md).
 
@@ -36,7 +38,7 @@ Abra **icatyalive.slnx** no Visual Studio.
 
 ## Abrir
 
-Execute **Iniciar Icatya.cmd**. O iniciador abre o pacote 0.7.2 pronto, quando presente. As versões anteriores ficam preservadas na pasta Backups, ao lado do projeto.
+Execute **Iniciar Icatya.cmd**. O iniciador compila e abre os fontes atuais, usando o SDK .NET 10. As versões anteriores ficam preservadas na pasta Backups, ao lado do projeto.
 
 Se clonou apenas os fontes: execute **Preparar video.cmd** uma vez para baixar os componentes locais. Depois execute o iniciador, com o SDK .NET 10 e desenvolvimento desktop instalados.
 

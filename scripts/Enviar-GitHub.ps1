@@ -52,6 +52,12 @@ try {
     if (!(Test-Path -LiteralPath (Join-Path $projectRoot 'src\Icatya\Icatya.csproj'))) {
         throw 'Projeto principal nao encontrado. Mantenha este script dentro da pasta scripts do Icatya.'
     }
+    [xml]$project = Get-Content -LiteralPath (Join-Path $projectRoot 'src\Icatya\Icatya.csproj')
+    $sourceVersion = [string]$project.Project.PropertyGroup.Version
+    Write-Host ("Fontes do iCatya {0}" -f $sourceVersion) -ForegroundColor Cyan
+    Write-Host ("Pasta: {0}" -f $projectRoot)
+    Write-Host 'Este envio atualiza o codigo. O download e o atualizador dependem de uma Release separada.'
+    if (!$PSBoundParameters.ContainsKey('Message')) { $Message = "Atualiza iCatya $sourceVersion - " + (Get-Date -Format 'yyyy-MM-dd HH:mm') }
     if (!(Test-Path -LiteralPath (Join-Path $projectRoot '.git'))) {
         if ($VerifyOnly) { throw 'Repositorio Git ainda nao inicializado.' }
         Invoke-Git -GitArguments @('init', '-b', 'main')

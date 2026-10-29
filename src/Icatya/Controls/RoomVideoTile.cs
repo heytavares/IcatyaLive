@@ -17,6 +17,7 @@ internal sealed class RoomVideoTile : IDisposable
     private readonly Image _image = new() { Stretch = Stretch.Uniform };
     private readonly TextBlock _waiting = new() { Text = "Conectando à tela…", HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, FontSize = 14 };
     private readonly TextBlock _name = new() { Margin = new Thickness(10, 7, 10, 7), FontSize = 13 };
+    private readonly Border _liveBadge;
     private readonly object _gate = new();
     private readonly VideoFrameMailbox _frames = new();
     private bool _disposed;
@@ -46,17 +47,17 @@ internal sealed class RoomVideoTile : IDisposable
         var live = new StackPanel { Orientation = Orientation.Horizontal };
         live.Children.Add(new System.Windows.Shapes.Ellipse { Width = 6, Height = 6, Fill = Brushes.White, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center });
         live.Children.Add(new TextBlock { Text = "AO VIVO", FontSize = 10, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White });
-        grid.Children.Add(new Border { Child = live, Background = new SolidColorBrush(Color.FromRgb(230, 62, 76)), CornerRadius = new CornerRadius(9), Padding = new Thickness(8, 5, 8, 5), Margin = new Thickness(14), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top });
+        _liveBadge = new Border { Child = live, Background = new SolidColorBrush(Color.FromRgb(230, 62, 76)), CornerRadius = new CornerRadius(9), Padding = new Thickness(8, 5, 8, 5), Margin = new Thickness(14), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Opacity = 0, IsHitTestVisible = false };
+        grid.Children.Add(_liveBadge);
         View = new Border { Child = grid, Background = new SolidColorBrush(Color.FromRgb(12, 13, 16)),
             BorderBrush = new SolidColorBrush(Color.FromRgb(41, 44, 53)), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14), ClipToBounds = true,
             Focusable = true, Cursor = Cursors.Hand, ToolTip = "Clique para focar esta tela" };
         View.MouseLeftButtonUp += (_, e) => { FocusRequested?.Invoke(); e.Handled = true; };
         View.KeyDown += (_, e) => { if (e.Key is Key.Enter or Key.Space) { FocusRequested?.Invoke(); e.Handled = true; } };
-        View.MouseEnter += (_, _) => View.BorderBrush = new SolidColorBrush(Color.FromRgb(164, 145, 250));
-        View.MouseLeave += (_, _) => View.BorderBrush = new SolidColorBrush(Color.FromRgb(41, 44, 53));
         View.SizeChanged += (_, e) => View.Clip = new RectangleGeometry(new Rect(e.NewSize), 14, 14);
         Rename(nick);
     }
+    public void SetOverlayVisible(bool visible) => _liveBadge.Opacity = visible ? 1 : 0;
     public void Rename(string nick)
     {
         _name.Text = "▣ " + nick;

@@ -34,13 +34,6 @@ public partial class MainWindow
         _roomTimer.Tick += (_, _) =>
         {
             foreach (var tile in _tiles.Values) tile.Render();
-            // Moving cards during focus/resize can invalidate mouse-enter state without a new mouse move.
-            if (_focusedStream != null && FocusSurface.IsVisible)
-            {
-                var point = System.Windows.Input.Mouse.GetPosition(FocusSurface);
-                SetFocusControlVisible(FocusControls.IsKeyboardFocusWithin || (IsActive || FocusSurface.IsMouseOver) &&
-                    point.X >= 0 && point.Y >= 0 && point.X < FocusSurface.ActualWidth && point.Y < FocusSurface.ActualHeight);
-            }
         };
         _roomIdentity = _roomStore.Load() ?? _roomLibrary.Load().FirstOrDefault()?.Identity;
         if (_roomIdentity != null) await EnterRoomAsync(_roomIdentity);
@@ -139,8 +132,7 @@ public partial class MainWindow
             {
                 bool watching = room.IsWatching(member.Id);
                 if (watching) _audioPlayback.Allow(member.Id); else _audioPlayback.Remove(member.Id);
-                var badge = new Border { Style = (Style)FindResource("LiveBadge"), Child = new TextBlock { Text = watching ? "AO VIVO" : "ABRIR", FontSize = 9, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White } };
-                if (!watching) badge.SetResourceReference(Border.BackgroundProperty, "SelectedBackground");
+                var badge = new Border { Style = (Style)FindResource("LiveBadge"), Child = new TextBlock { Text = "AO VIVO", FontSize = 9, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White } };
                 Grid.SetColumn(badge, 2); row.Children.Add(badge);
                 if (watching) EnsureTile(member.Id, member.Nick); else RemoveTile(member.Id);
             }
@@ -159,7 +151,14 @@ public partial class MainWindow
         {
             string nick = member.Nick + (member.Id == room.SelfId ? " (você)" : "");
             if (_participantCards.TryGetValue(member.Id, out var card)) card.Rename(nick, member.Avatar);
-            else _participantCards.Add(member.Id, new RoomParticipantCard(nick, member.Avatar));
+            else
+            {
+                var created = new RoomParticipantCard(nick, member.Avatar);
+                string memberId = member.Id;
+                created.ReopenRequested += () => OpenMemberStream(memberId);
+                _participantCards.Add(member.Id, created);
+            }
+            _participantCards[member.Id].SetClosedLive(member.Sharing && member.Id != room.SelfId && !room.IsWatching(member.Id));
         }
         if (_captureTask is { IsCompleted: false }) EnsureTile(room.SelfId, room.Identity.Nick + " (você)");
         else RemoveTile(room.SelfId);
@@ -173,7 +172,7 @@ public partial class MainWindow
             if (_tiles.TryGetValue(id, out var previous)) { previous.Rename(nick); return; }
             var tile = new RoomVideoTile(nick);
             if (_room != null && id != _room.SelfId) tile.SetStatus(_room.StreamStatus(id));
-            tile.FocusRequested += () => FocusStream(id);
+            tile.FocusRequested += () => { if (_focusedStream == id) ClearStreamFocus(); else FocusStream(id); };
             _tiles.Add(id, tile);
             ArrangeRoomVideos();
         }
@@ -218,10 +217,10 @@ public partial class MainWindow
             if (focused && pair.Key == _focusedStream)
             {
                 FocusHost.Children.Add(view);
-                view.ToolTip = "Tela em foco";
+                view.ToolTip = "Clique para voltar à grade";
             }
-            else if (focused) AddThumbnail(view);
-            else RoomVideos.Children.Add(view);
+            else if (focused) { view.ToolTip = "Clique para focar esta tela"; AddThumbnail(view); }
+            else { view.ToolTip = "Clique para focar esta tela"; RoomVideos.Children.Add(view); }
         }
         foreach (var card in _participantCards.Values)
         {
@@ -239,6 +238,7 @@ public partial class MainWindow
             _roomTimer.Start();
             if (_room != null) _renderTimer.Start();
         }
+        RefreshLiveOverlays();
     }
     private void DetachRoomCards()
     {
@@ -280,16 +280,14 @@ public partial class MainWindow
         double opacity = visible ? 1 : 0;
         FocusControls.Opacity = opacity;
         FocusControls.IsHitTestVisible = visible;
-        bool showBack = visible || ExitFocusButton.IsKeyboardFocused;
+        bool showBack = visible;
         ExitFocusButton.Opacity = showBack ? 1 : 0;
         ExitFocusButton.IsHitTestVisible = showBack;
     }
-    private void FocusSurfaceEntered(object sender, System.Windows.Input.MouseEventArgs e) => SetFocusControlVisible(true);
-    private void FocusSurfaceLeft(object sender, System.Windows.Input.MouseEventArgs e) => SetFocusControlVisible(FocusControls.IsKeyboardFocusWithin);
-    private void FocusToggleFocused(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e) => SetFocusControlVisible(true);
-    private void FocusToggleUnfocused(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e) => SetFocusControlVisible(FocusSurface.IsMouseOver);
-    private void FocusBackFocused(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e) => SetFocusControlVisible(FocusSurface.IsMouseOver);
-    private void FocusBackUnfocused(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e) => SetFocusControlVisible(FocusSurface.IsMouseOver);
+    private void FocusToggleFocused(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e) => LiveOverlayFocusChanged();
+    private void FocusToggleUnfocused(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e) => LiveOverlayFocusChanged();
+    private void FocusBackFocused(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e) => LiveOverlayFocusChanged();
+    private void FocusBackUnfocused(object sender, System.Windows.Input.KeyboardFocusChangedEventArgs e) => LiveOverlayFocusChanged();
     private void UpdateFocusTray()
     {
         ThumbnailScroll.Visibility = _focusedStream != null && !_thumbnailsHidden ? Visibility.Visible : Visibility.Collapsed;
@@ -346,7 +344,7 @@ public partial class MainWindow
         _audioPlayback.Remove(id);
         RemoveTile(id);
         UpdateRoomVisuals();
-        SetStatus("Live fechada só para você. Clique no participante para reabrir.");
+        SetStatus("Live fechada só para você. Clique no cartão com o avatar para assistir novamente.");
     }
     private void UpdateStageHeading()
     {

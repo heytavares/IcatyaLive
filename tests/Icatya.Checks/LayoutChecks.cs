@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Windows;
@@ -10,6 +11,8 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Input;
+using System.Diagnostics;
 using Icatya;
 using Icatya.Controls;
 using Icatya.Services;
@@ -67,8 +70,23 @@ internal static class LayoutChecks
                 Directory.CreateDirectory(output);
                 PaintTiles(main);
                 Resize(root, 1440, 900); Call(main, "ApplySidebarLayout");
-                Call(main, "SetFocusControlVisible", true);
+                Call(main, "LiveSurfaceActivity", root, new MouseEventArgs(Mouse.PrimaryDevice, 0));
+                var focusedTile = Field<Dictionary<string,RoomVideoTile>>(main,"_tiles")["fox"];
+                Require(Control<Border>(main,"PlaybackOverlay").Opacity == 1 && Field<Border>(focusedTile,"_liveBadge").Opacity == 1, "Mouse movement does not reveal audio and live overlays");
+                Set(main,"_lastLivePointerAt",Stopwatch.GetTimestamp()-3*Stopwatch.Frequency);
+                Call(main,"RefreshLiveOverlays");
+                Require(Control<Border>(main,"PlaybackOverlay").Opacity == 0 && !Control<Border>(main,"PlaybackOverlay").IsHitTestVisible && Field<Border>(focusedTile,"_liveBadge").Opacity == 0 && Control<StackPanel>(main,"FocusControls").Opacity == 0,
+                    "Overlays remain visible or intercept clicks after idle timeout");
+                Snapshot(root,1440,900,Path.Combine(output,"foco-sem-controles.png"));
+                var borderBeforeHover = focusedTile.View.BorderBrush;
+                focusedTile.View.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice,0) { RoutedEvent = UIElement.MouseEnterEvent });
+                Require(ReferenceEquals(borderBeforeHover,focusedTile.View.BorderBrush),"Hover recolors the video border");
+                Call(main, "LiveSurfaceActivity", root, new MouseEventArgs(Mouse.PrimaryDevice, 0));
                 Snapshot(root, 1440, 900, Path.Combine(output, "foco.png"));
+                focusedTile.View.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice,0,MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
+                Require(Field<string?>(main,"_focusedStream") == null,"Clicking the focused video does not return to grid");
+                focusedTile.View.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice,0,MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
+                Require(Field<string?>(main,"_focusedStream") == "fox","Clicking the grid video does not focus it");
                 Require(Control<Button>(main, "CopyRoomButton").IsEnabled, "Invite button did not remain available");
                 Require(Control<TextBlock>(main, "StageTitle").Text == "Tela de Mattretta", "Focused title does not follow participant");
                 var arrow = Control<Button>(main, "ToggleThumbnailsButton");
@@ -81,8 +99,17 @@ internal static class LayoutChecks
                 Require(Field<Dictionary<string, RoomVideoTile>>(main, "_tiles").ContainsKey("tiger"), "Close removed another live");
                 Call(main, "UpdateControls");
                 Require(!Field<Dictionary<string, RoomVideoTile>>(main, "_tiles").ContainsKey("fox"), "Presence refresh reopened a closed tile");
-                Field<Dictionary<string, Button>>(main, "_participantButtons")["fox"].RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
-                Require(room.IsWatching("fox") && Field<string>(main, "_focusedStream") == "fox", "Participant cannot reopen and focus the live");
+                var closedCard = Field<Dictionary<string,RoomParticipantCard>>(main,"_participantCards")["fox"];
+                Require(closedCard.IsClosedLive && Control<Icatya.Controls.VideoGridPanel>(main,"RoomVideos").Children.Contains(closedCard.View),"Closed live has no clickable placeholder in the grid");
+                Require(Field<AvatarView>(closedCard,"_closedPortrait").Avatar == "dog" && Field<TextBlock>(closedCard,"_closedName").Text == "Mattretta","Closed card does not use app avatar and participant nick");
+                var sidebarRow = (Grid)Field<Dictionary<string,Button>>(main,"_participantButtons")["fox"].Content;
+                Require(sidebarRow.Children.OfType<Border>().Any(b => b.Child is TextBlock label && label.Text == "AO VIVO"),"Closing a live hides its sidebar live badge");
+                PaintTiles(main);
+                Snapshot(root,1440,900,Path.Combine(output,"live-fechada.png"));
+                closedCard.View.RaiseEvent(new MouseButtonEventArgs(Mouse.PrimaryDevice,0,MouseButton.Left) { RoutedEvent = UIElement.MouseLeftButtonUpEvent });
+                Require(room.IsWatching("fox") && Field<string>(main, "_focusedStream") == "fox" && !closedCard.IsClosedLive, "Clicking the whole card cannot reopen and focus the live");
+                Call(main,"LiveSurfaceLeft",root,new MouseEventArgs(Mouse.PrimaryDevice,0));
+                Require(Control<Border>(main,"PlaybackOverlay").Opacity == 0,"Audio overlay stays visible after pointer leaves the stage");
                 PaintTiles(main);
                 Click(main, "ToggleThumbnailsButton");
                 Require(Control<ScrollViewer>(main, "ThumbnailScroll").Visibility == Visibility.Collapsed, "Thumbnail toggle does not hide the tray");
@@ -130,6 +157,7 @@ internal static class LayoutChecks
                 Snapshot(root,1440,900,Path.Combine(output,"seletor-salas.png"));
                 ((Grid)root).Children.Remove(card); card.Margin = new Thickness(0); popup.Child = card;
                 Console.WriteLine("PASS room selector: saved rooms, name search, empty state, collapsed advanced section and removed self-test");
+                Console.WriteLine("PASS live interactions: mouse inactivity hides overlays, no hover border, click focus/grid, closed-live avatar card reopens without affecting another subscription or sidebar live badge");
                 Console.WriteLine("PASS WPF offscreen: focus/grid, selected participant, close/reopen one live, thumbnail toggle, minimum size, sidebar and settings");
                 Console.WriteLine("PASS no app window, desktop capture, user preference writes or mouse/keyboard automation; PNGs: " + output);
             }
@@ -140,6 +168,7 @@ internal static class LayoutChecks
                 {
                     Field<Icatya.Services.Video.PresentationClock>(main, "_roomTimer").Stop();
                     Field<Icatya.Services.Video.PresentationClock>(main, "_renderTimer").Stop();
+                    Field<System.Windows.Threading.DispatcherTimer>(main, "_liveOverlayTimer").Stop();
                     Field<Icatya.Services.Audio.AudioPlayback>(main, "_audioPlayback").Dispose();
                     Set(main, "_allowClose", true); Set(main, "_closing", true);
                 }

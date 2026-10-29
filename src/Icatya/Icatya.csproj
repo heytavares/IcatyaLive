@@ -11,9 +11,9 @@
     <RootNamespace>Icatya</RootNamespace>
     <Product>iCatya</Product>
     <PackageId>icatyalive</PackageId>
-    <Version>0.7.3</Version>
-    <FileVersion>0.7.3.0</FileVersion>
-    <InformationalVersion>0.7.3+recovery.1</InformationalVersion>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
     <ApplicationIcon>Assets\Icatya.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
