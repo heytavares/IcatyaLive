@@ -117,8 +117,8 @@ public sealed unsafe class H264VideoCodec : IDisposable
         Check(ffmpeg.av_frame_make_writable(_encodeFrame));
         fixed (byte* pixels = input.Pixels)
         {
-            byte*[] source = [pixels, null, null, null];
-            int[] strides = [input.Stride, 0, 0, 0];
+            byte_ptrArray4 source = default; source[0] = pixels;
+            int_array4 strides = default; strides[0] = input.Stride;
             ffmpeg.sws_scale(_toEncoder, source, strides, 0, input.Height, _encodeFrame->data, _encodeFrame->linesize);
         }
         _encodeFrame->pts = _pts++;
@@ -154,6 +154,7 @@ public sealed unsafe class H264VideoCodec : IDisposable
             if (_decoder == null) throw new OutOfMemoryException();
             _decoder->thread_count = 2;
             _decoder->thread_type = ffmpeg.FF_THREAD_SLICE;
+            _decoder->err_recognition = ffmpeg.AV_EF_CAREFUL | ffmpeg.AV_EF_EXPLODE;
             Check(ffmpeg.avcodec_open2(_decoder, codec, null));
             _decodeFrame = ffmpeg.av_frame_alloc();
             _decodePacket = ffmpeg.av_packet_alloc();
@@ -171,6 +172,8 @@ public sealed unsafe class H264VideoCodec : IDisposable
         {
             try
             {
+                if ((_decodeFrame->flags & ffmpeg.AV_FRAME_FLAG_CORRUPT) != 0 || _decodeFrame->decode_error_flags != 0)
+                    throw new InvalidOperationException("Quadro de vídeo incompleto; aguardando recuperação.");
                 int width = _decodeFrame->width, height = _decodeFrame->height;
                 if (width is <= 0 or > 1920 || height is <= 0 or > 1080) throw new InvalidOperationException("Resolução recebida fora dos limites.");
                 _toBgr = ffmpeg.sws_getCachedContext(_toBgr, width, height, (AVPixelFormat)_decodeFrame->format,
@@ -179,8 +182,8 @@ public sealed unsafe class H264VideoCodec : IDisposable
                 using var output = VideoFrame.Rent(width, height);
                 fixed (byte* pixels = output.Pixels)
                 {
-                    byte*[] destination = [pixels, null, null, null];
-                    int[] strides = [output.Stride, 0, 0, 0];
+                    byte_ptrArray4 destination = default; destination[0] = pixels;
+                    int_array4 strides = default; strides[0] = output.Stride;
                     ffmpeg.sws_scale(_toBgr, _decodeFrame->data, _decodeFrame->linesize, 0, height, destination, strides);
                 }
                 consume(output);
@@ -205,17 +208,18 @@ public sealed unsafe class H264VideoCodec : IDisposable
         fixed (AVPacket** packet = &_encodePacket) ffmpeg.av_packet_free(packet);
         _profile = null;
     }
-    public void Dispose()
+    public void ResetDecoder()
     {
-        if (_disposed) return;
-        _disposed = true;
-        ResetEncoder();
         if (_toBgr != null) { ffmpeg.sws_freeContext(_toBgr); _toBgr = null; }
         fixed (AVCodecContext** context = &_decoder) ffmpeg.avcodec_free_context(context);
         fixed (AVFrame** frame = &_decodeFrame) ffmpeg.av_frame_free(frame);
         fixed (AVPacket** packet = &_decodePacket) ffmpeg.av_packet_free(packet);
     }
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        ResetEncoder();
+        ResetDecoder();
+    }
 }
-
-
-

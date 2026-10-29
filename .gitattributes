@@ -6,3 +6,4 @@
 *.cmd text eol=crlf
 *.md text eol=lf
 *.slnx text eol=lf
+*.iss text eol=crlf

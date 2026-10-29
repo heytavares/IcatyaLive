@@ -5,6 +5,20 @@ using System.Threading.Tasks;
 using Icatya.Models;
 using Icatya.Services;
 
+if (args.Contains("--video-recovery")) return await VideoRecoveryChecks.RunAsync();
+if (args.Contains("--presentation-checks")) { PresentationChecks.Run(); return 0; }
+if (args.Contains("--cursor-checks")) return CursorChecks.Run();
+if (args.Contains("--room-library-checks")) return RoomLibraryChecks.Run();
+if (args.Contains("--icon-checks")) return IconChecks.Run();
+if (args.Contains("--background-checks")) return await BackgroundChecks.RunAsync();
+if (args.Contains("--pipeline-benchmark")) return await BackgroundChecks.BenchmarkAsync();
+if (args.Contains("--audio-source")) return AudioChecks.Source(args);
+if (args.Contains("--window-capture")) return await AudioChecks.RunAsync(true);
+if (args.Contains("--ui-checks")) return ShareUiChecks.Run();
+if (args.Contains("--layout-headless")) return LayoutChecks.Run();
+if (args.Contains("--audio")) return await AudioChecks.RunAsync();
+if (args.Contains("--rooms-preview")) return await RoomPreview.RunAsync();
+if (args.Contains("--rooms")) return await RoomChecks.RunAsync();
 if (args.Contains("--manual-signaling")) return await ManualSignalingChecks.RunAsync();
 if (args.Contains("--codec-reconfigure")) return CodecReconfigurationChecks.Run();
 if (args.Contains("--capture-benchmark")) return await CaptureBenchmarks.RunAsync();
@@ -117,12 +131,5 @@ try
     return 0;
 }
 catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
-
-
-
-
-
-
-
 
 

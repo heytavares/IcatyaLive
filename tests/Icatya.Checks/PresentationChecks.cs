@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using System.Runtime.InteropServices;
 using Icatya.Models;
 using Icatya.Services.Video;
 using Icatya.Services;
@@ -42,21 +43,30 @@ internal static class PresentationChecks
                     Array.Fill(frame.Pixels, (byte)113, 0, frame.Stride * frame.Height);
                     if (!presenter.TryPresent(frame)) throw new Exception("Não apresentou um bitmap livre.");
                     var bitmap = presenter.Bitmap!;
-                    var pixels = new byte[frame.Stride * frame.Height];
-                    bitmap.CopyPixels(pixels, frame.Stride, 0);
-                    if (pixels[0] != 113 || pixels[^1] != 113) throw new Exception("Cópia incompleta ou stride incorreto.");
+                    var pixels = new byte[width * 4 * frame.Height];
+                    bitmap.CopyPixels(pixels, width * 4, 0);
+                    for (int i = 0; i < pixels.Length; i += 4)
+                        if (pixels[i] != 113 || pixels[i+1] != 113 || pixels[i+2] != 113 || pixels[i+3] != 255)
+                            throw new Exception("Conversão BGR32 incompleta ou stride incorreto.");
                     if (!presenter.TryPresent(frame) || !ReferenceEquals(bitmap, presenter.Bitmap))
                         throw new Exception("Recriou o bitmap sem mudar de resolução.");
                 }
                 presenter.Clear();
                 if (presenter.Bitmap != null) throw new Exception("Imagem mantida após limpar.");
+                using var large = VideoFrame.Rent(1920,1080);
+                Array.Fill(large.Pixels,(byte)91,0,large.Stride*large.Height);
+                if(!presenter.TryPresent(large,true)||presenter.Bitmap!.PixelWidth!=320||presenter.Bitmap.PixelHeight!=180)
+                    throw new Exception("Miniatura ainda cria superfície de tamanho completo.");
+                if(!presenter.TryPresent(large,false)||presenter.Bitmap!.PixelWidth!=1920||presenter.Bitmap.PixelHeight!=1080)
+                    throw new Exception("Focar uma miniatura não restaura a resolução completa.");
+                CheckPixelBoundaries();
             }
             catch (Exception ex) { failure = ex; }
         });
         ui.SetApartmentState(ApartmentState.STA);
         ui.Start(); ui.Join();
         if (failure != null) throw new Exception("Falha de apresentação WPF.", failure);
-        Console.WriteLine("PASS apresentação WPF: pixels, linhas com padding, resolução e reutilização");
+        Console.WriteLine("PASS apresentação WPF BGR32: pixels, padding, SIMD/escalar, limites, miniaturas, resolução e reutilização");
 
         using var cancel = new CancellationTokenSource();
         using (var pacer = new FramePacer(30, cancel.Token))
@@ -81,5 +91,38 @@ internal static class PresentationChecks
             if (pacer.WaitNext() || watch.ElapsedMilliseconds > 500) throw new Exception("Cancelamento lento do relógio.");
         }
         Console.WriteLine("PASS cadência, recuperação após atraso e cancelamento imediato da espera");
+    }
+
+    private static void CheckPixelBoundaries()
+    {
+        foreach(int width in new[]{1,2,3,4,5,6,7,8,9,13,17,31,32,33,1279})
+        {
+            const int height=3, guard=16;
+            int sourceStride=width*3+7, destinationStride=width*4+12;
+            var source=new byte[sourceStride*height];
+            new Random(width).NextBytes(source);
+            using var frame=new VideoFrame(source,width,height,sourceStride);
+            byte[]? previous=null;
+            foreach(bool vectorize in new[]{false,true})
+            {
+                var expected=new byte[destinationStride*height+guard*2];Array.Fill(expected,(byte)0xCC);
+                IntPtr memory=Marshal.AllocHGlobal(expected.Length);
+                try
+                {
+                    Marshal.Copy(expected,0,memory,expected.Length);
+                    PresentationPixels.Copy(frame,memory+guard,destinationStride,width,height,vectorize:vectorize);
+                    var result=new byte[expected.Length];Marshal.Copy(memory,result,0,result.Length);
+                    for(int y=0;y<height;y++)for(int x=0;x<width;x++)
+                    {
+                        int input=y*sourceStride+x*3, output=guard+y*destinationStride+x*4;
+                        expected[output]=source[input];expected[output+1]=source[input+1];expected[output+2]=source[input+2];expected[output+3]=255;
+                    }
+                    if(!result.AsSpan().SequenceEqual(expected))throw new Exception("Cor, padding ou limite de memória incorreto, largura "+width);
+                    if(previous!=null&&!result.AsSpan().SequenceEqual(previous))throw new Exception("SIMD e fallback divergem.");
+                    previous=result;
+                }
+                finally { Marshal.FreeHGlobal(memory); }
+            }
+        }
     }
 }

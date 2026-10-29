@@ -13,6 +13,7 @@ internal sealed class GdiScreenCapture : IDisposable
     private readonly Rectangle _bounds;
     private readonly Rectangle _destination;
     private readonly int _width, _height;
+    private readonly GdiCursorOverlay _cursor = new();
     public GdiScreenCapture(Rectangle bounds, CaptureProfile profile)
     {
         if (profile.Width % 4 != 0) throw new ArgumentException("A largura precisa ser múltipla de quatro.");
@@ -52,6 +53,7 @@ internal sealed class GdiScreenCapture : IDisposable
             copied = StretchBlt(_memory, _destination.X, _destination.Y, _destination.Width, _destination.Height,
                 _screen, _bounds.X, _bounds.Y, _bounds.Width, _bounds.Height, 0x00CC0020);
         if (!copied) throw new Win32Exception(Marshal.GetLastWin32Error(), "Não foi possível capturar este monitor.");
+        _cursor.DrawCurrent(_memory, _bounds, _destination);
         GdiFlush();
         Marshal.Copy(_pixels, frame.Pixels, 0, _width * _height * 3);
     }

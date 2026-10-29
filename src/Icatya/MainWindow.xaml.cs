@@ -1,30 +1,31 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Threading;
 using Icatya.Models;
 using Icatya.Services;
 using Icatya.Services.Video;
-using Forms = System.Windows.Forms;
+
 
 namespace Icatya;
 
 public partial class MainWindow : Window
 {
     private readonly ScreenCaptureService _capture = new();
-    private readonly DispatcherTimer _renderTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
+    private readonly PresentationClock _renderTimer = new();
     private readonly CancellationTokenSource _lifetime = new();
     private CancellationTokenSource? _captureCancellation;
     private Task? _captureTask;
     private PeerSession? _peer;
-    private VideoFrame? _latestFrame;
+    private readonly VideoFrameMailbox _frameMailbox = new();
     private readonly BitmapPresenter _presenter = new();
     private DurationMetric _presentTime = new();
-    private MainWindow? _testViewer;
     private bool _busy;
     private bool _answerApplied;
     private volatile bool _closing;
@@ -34,27 +35,29 @@ public partial class MainWindow : Window
     private long _lastFrameCount;
     private long _displayedFrames, _lastDisplayedFrames, _replacedFrames, _renderBusyFrames;
     private double _inputFps, _displayFps;
+    private Controls.RoomVideoTile? _measuredRoomTile;
+    private long _lastAudioUiAt;
     private readonly Stopwatch _measurement = Stopwatch.StartNew();
     private DateTime _lastFrameAt;
     private int _displayWidth;
     private int _displayHeight;
     private bool _allowClose;
     private readonly UiPreferencesStore _preferences = new();
-    private double _sidebarWidth = 360;
+    private double _sidebarWidth = 300;
     private bool _sidebarHidden;
     private bool _rememberLayout = true;
-    private string _selectedDisplayName = "";
     private CaptureProfile _selectedProfile = CaptureProfile.Available[0];
 
     public MainWindow()
     {
         InitializeComponent();
+        InitializeProfile();
+        InitializeAudio();
         SourceInitialized += (_, _) => Services.Windowing.DarkTitleBar.Attach(this);
-        _selectedDisplayName = Forms.Screen.AllScreens.FirstOrDefault()?.DeviceName ?? "";
         var preferences = _preferences.Load();
         _sidebarWidth = preferences.SidebarWidth;
         _sidebarHidden = preferences.SidebarHidden;
-        Loaded += (_, _) => ApplySidebarLayout();
+        Loaded += async (_, _) => { ApplySidebarLayout(); await InitializeRoomAsync(); };
         UpdateControls();
         _renderTimer.Tick += RenderLatest;
         Closing += async (_, args) =>
@@ -63,6 +66,7 @@ public partial class MainWindow : Window
             args.Cancel = true;
             if (_closing) return;
             _closing = true;
+            RoomPicker.IsOpen = false;
             SaveSidebarLayout();
             _lifetime.Cancel();
             // Defer even when ResetAsync completes synchronously: Close cannot run
@@ -70,6 +74,7 @@ public partial class MainWindow : Window
             await Dispatcher.Yield(DispatcherPriority.Background);
             await ResetAsync();
             _renderTimer.Stop();
+            _audioPlayback.Dispose();
             _lifetime.Dispose();
             _allowClose = true;
             Close();
@@ -78,14 +83,38 @@ public partial class MainWindow : Window
 
     private void SetStatus(string text)
     {
-        if (!_closing) Status.Text = text;
+        if (!_closing) { Status.Text = text; SettingsStatus.Text = text; }
     }
-    private void CheckForUpdate(object sender, RoutedEventArgs e)
+    private void OpenSettings(object sender, RoutedEventArgs e)
     {
-        string updater = Path.Combine(AppContext.BaseDirectory, "Atualizar Icatya.cmd");
-        if (!File.Exists(updater)) { SetStatus("O atualizador acompanha o pacote pronto do Icatya."); return; }
-        try { Process.Start(new ProcessStartInfo(updater) { UseShellExecute = true, WorkingDirectory = AppContext.BaseDirectory }); }
-        catch (Exception) { SetStatus("Abra Atualizar Icatya.cmd na pasta do aplicativo para procurar atualizações."); }
+        RoomPicker.IsOpen = false;
+        SettingsOverlay.Visibility = Visibility.Visible;
+        Workspace.IsEnabled = false;
+        SettingsClose.Focus();
+    }
+    private void CloseSettings(object sender, RoutedEventArgs e) => CloseSettingsPanel();
+    private void CloseSettingsPanel()
+    {
+        SettingsOverlay.Visibility = Visibility.Collapsed;
+        Workspace.IsEnabled = true;
+        if (_sidebarHidden) HeaderSettingsButton.Focus(); else SettingsButton.Focus();
+    }
+    private void WindowKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.K && Keyboard.Modifiers == ModifierKeys.Control && SettingsOverlay.Visibility != Visibility.Visible)
+        { ToggleRoomPicker(); e.Handled = true; }
+        else if (e.Key == Key.Escape && RoomPicker.IsOpen)
+        { RoomPicker.IsOpen = false; e.Handled = true; }
+        else if (e.Key == Key.Escape && SettingsOverlay.Visibility == Visibility.Visible)
+        {
+            CloseSettingsPanel();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && _focusedStream != null)
+        {
+            ClearStreamFocus();
+            e.Handled = true;
+        }
     }
     private void OnUi(Action action)
     {
@@ -96,7 +125,7 @@ public partial class MainWindow : Window
     {
         bool capturing = _captureTask is { IsCompleted: false };
         bool receiving = _peer is { IsSender: false };
-        OfferButton.IsEnabled = AcceptButton.IsEnabled = SoloButton.IsEnabled = !_busy && _peer == null;
+        OfferButton.IsEnabled = AcceptButton.IsEnabled = !_busy && _peer == null && _room == null;
         Incoming.IsEnabled = !_busy;
         Incoming.IsReadOnly = receiving || _answerApplied;
         OfferButton.Visibility = receiving ? Visibility.Collapsed : Visibility.Visible;
@@ -117,7 +146,27 @@ public partial class MainWindow : Window
         ShareButton.Visibility = StopButton.Visibility = receiving ? Visibility.Collapsed : Visibility.Visible;
         StopButton.IsEnabled = !_busy && capturing;
         ShareButton.ToolTip = capturing ? "Alterar tela, qualidade e FPS" : "Compartilhar tela / configurar qualidade";
-        CaptureTitle.Text = receiving ? "Tela recebida" : "Sua tela";
+        CaptureTitle.Text = receiving ? "Assistindo à transmissão" : capturing ? "Você está compartilhando sua tela" : "Seu compartilhamento está parado";
+        LeaveButton.IsEnabled = !_busy && (_room != null || _peer != null);
+        JoinRoomButton.IsEnabled = !_busy;
+        UpdateParticipantVisuals();
+    }
+    private void UpdateParticipantVisuals()
+    {
+        HeaderConnectionStatus.Text = _room?.Connected == true || _peer?.IsConnected == true ? "Conectado" : _room != null || _peer != null ? "Conectando…" : "Fora da sala";
+        ConnectionDot.SetResourceReference(System.Windows.Shapes.Shape.FillProperty, _room?.Connected == true || _peer?.IsConnected == true ? "SuccessBrush" : "MutedText");
+        if (_room != null) { UpdateRoomVisuals(); return; }
+        bool connected = _peer?.IsConnected == true;
+        bool capturing = _captureTask is { IsCompleted: false };
+        RoomTitle.Text = _peer == null ? _roomIdentity != null ? "Sala salva" : "Sem sala" : "Conexão direta";
+        RoomDescription.Text = connected ? "Conectado" : _peer != null ? "Aguardando conexão" : _roomIdentity != null ? "Entre para voltar à sala" : "Crie ou entre em uma sala";
+        CopyRoomButton.IsEnabled = _roomIdentity != null;
+        RemoteParticipant.Visibility = connected ? Visibility.Visible : Visibility.Collapsed;
+        ParticipantsHint.Visibility = connected ? Visibility.Collapsed : Visibility.Visible;
+        SelfLive.Visibility = capturing ? Visibility.Visible : Visibility.Collapsed;
+        RemoteLive.Visibility = connected && _peer is { IsSender: false } && !_remotePaused && _lastFrameAt != default
+            ? Visibility.Visible : Visibility.Collapsed;
+        UpdateStageHeading();
     }
 
     private async Task RunActionAsync(Func<Task> action)
@@ -148,6 +197,7 @@ public partial class MainWindow : Window
             }
             UpdateControls();
         });
+        peer.AudioReceived += (sequence, packet) => { if (_peer == peer && !_remotePaused) _audioPlayback.AddPacket("manual", sequence, packet); };
         peer.FrameReceived += frame =>
         {
             if (_peer == peer && !_remotePaused && _renderEnabled) QueueFrame(frame);
@@ -156,12 +206,14 @@ public partial class MainWindow : Window
         {
             if (_peer != peer) return;
             _remotePaused = true;
+            _audioPlayback.Remove("manual");
             ClearImage("O outro lado parou de compartilhar.");
             SetStatus("Compartilhamento pausado pelo outro lado.");
         });
         peer.RemoteResumed += () => OnUi(() =>
         {
             if (_peer != peer) return;
+            _audioPlayback.Allow("manual");
             bool wasWaiting = _remotePaused || !_renderEnabled;
             _remotePaused = false;
             _renderEnabled = true;
@@ -171,6 +223,7 @@ public partial class MainWindow : Window
         peer.ConnectionLost += () => OnUi(async () =>
         {
             if (_peer != peer) return;
+            _audioPlayback.Remove("manual");
             await StopCaptureAsync();
             _renderEnabled = false;
             ClearImage("Conexão interrompida.");
@@ -230,6 +283,7 @@ public partial class MainWindow : Window
         _answerApplied = true;
         SetStatus("Resposta aplicada. Tentando conectar…");
         WatchConnection(peer);
+        CloseSettingsPanel();
     });
 
     private async void WatchConnection(PeerSession peer)
@@ -254,8 +308,15 @@ public partial class MainWindow : Window
     {
         try
         {
-            var diagnostic = _peer?.DiagnosticSummary() ?? "Icatya 0.5.2: nenhuma sessão aberta.\n";
+            var diagnostic = _peer?.DiagnosticSummary() ?? "iCatya 0.7.3: nenhuma sessão aberta.\n";
             diagnostic += _peer?.PerformanceSummary();
+            diagnostic += _room?.PerformanceSummary();
+            diagnostic += _room?.DiagnosticSummary();
+            diagnostic += $"Apresentações de telas da sala: {_tiles.Values.Sum(tile => tile.PresentedFrames)}\nTentativas com apresentação ocupada: {_tiles.Values.Sum(tile => tile.BusyPresentationAttempts)}\n";
+            diagnostic += $"Capacidade gráfica WPF: {System.Windows.Media.RenderCapability.Tier >> 16}; modo: {System.Windows.Media.RenderOptions.ProcessRenderMode}; sessão remota: {SystemParameters.IsRemoteSession}\n";
+            var roomRender = _roomTimer.CallbackTime.Snapshot();
+            diagnostic += $"Ciclos de composição da sala: {_roomTimer.TickCount}; trabalho médio/máximo: {roomRender.AverageMs:F2}/{roomRender.MaximumMs:F2} ms\n";
+            foreach (var tile in _tiles) diagnostic += $"Tela {tile.Key[..Math.Min(8, tile.Key.Length)]}: " + tile.Value.PresentationSummary();
             diagnostic += $"Exibição habilitada: {_renderEnabled}\nPausa informada pelo outro lado: {_remotePaused}\n";
             diagnostic += $"FPS processados/recebidos: {_inputFps:F1}\nFPS exibidos: {_displayFps:F1}\nQuadros substituídos antes de exibir: {Interlocked.Read(ref _replacedFrames)}\nQuadros pulados com apresentação ocupada: {_renderBusyFrames}\n";
             var capture = _capture.CaptureTime.Snapshot();
@@ -281,49 +342,27 @@ public partial class MainWindow : Window
     private async Task ResetAsync()
     {
         await StopCaptureAsync();
+        await LeaveRoomAsync();
+        _audioPlayback.Clear();
         _renderEnabled = false;
         var peer = _peer;
         _peer = null;
         if (peer != null) await Task.Run(peer.Dispose);
-        if (_testViewer is { _closing: false }) _testViewer.Close();
-        _testViewer = null;
         Outgoing.Clear();
         Incoming.Clear();
         ClearImage("Sua tela aparece aqui");
     }
 
-    private async void TestSolo(object sender, RoutedEventArgs e) => await RunActionAsync(async () =>
-    {
-        await StopCaptureAsync();
-        SetStatus("Abrindo uma conexão local de teste…");
-        var viewer = new MainWindow { Title = "Icatya · Recebendo teste local", Width = 1040, Height = 800, _rememberLayout = false };
-        _testViewer = viewer;
-        viewer.Show();
-        var transmit = NewPeer(true, false);
-        var receive = viewer.NewPeer(false, false);
-        viewer.UpdateControls();
-        try
-        {
-            var offer = await Task.Run(() => transmit.CreateOfferAsync(_lifetime.Token));
-            var answer = await Task.Run(() => receive.AcceptOfferAsync(offer, _lifetime.Token));
-            await Task.Run(() => transmit.ApplyAnswer(answer));
-            await Task.WhenAll(transmit.Ready, receive.Ready).WaitAsync(TimeSpan.FromSeconds(20), _lifetime.Token);
-            SetStatus("Teste local conectado. Use o botão de compartilhar para escolher a tela e iniciar.");
-            viewer.SetStatus("Conexão local pronta. Inicie a transmissão na primeira janela.");
-            viewer.UpdateControls();
-        }
-        catch { await ResetAsync(); throw; }
-    });
-
     private async void OpenShareSettings(object sender, RoutedEventArgs e)
     {
         if (!ShareButton.IsEnabled) return;
-        var settings = new ShareSettingsWindow(_selectedDisplayName, _selectedProfile,
-            _captureTask is { IsCompleted: false }, _peer?.IsConnected == true) { Owner = this };
+        var settings = new ShareSettingsWindow(_selectedSource, _selectedProfile, _selectedAudio,
+            _captureTask is { IsCompleted: false }, _peer?.IsConnected == true || _room?.Connected == true) { Owner = this };
         if (settings.ShowDialog() != true || _closing) return;
         await RunActionAsync(async () =>
         {
-            _selectedDisplayName = settings.SelectedDisplayName;
+            _selectedSource = settings.SelectedSource;
+            _selectedAudio = settings.SelectedAudio;
             _selectedProfile = settings.SelectedProfile;
             await StopCaptureAsync();
             await StartCaptureAsync();
@@ -332,10 +371,18 @@ public partial class MainWindow : Window
 
     private async Task StartCaptureAsync()
     {
-        var screen = Forms.Screen.AllScreens.FirstOrDefault(s => s.DeviceName == _selectedDisplayName)
-            ?? throw new InvalidOperationException("O monitor escolhido não está disponível. Abra as opções e escolha outra tela.");
+        var source = _selectedSource ?? throw new InvalidOperationException("Escolha um aplicativo ou uma tela para compartilhar.");
+        source.Validate();
         var profile = _selectedProfile;
         var peer = _peer;
+        var room = _room;
+        if (room != null)
+        {
+            if (!room.Connected) throw new InvalidOperationException("Aguarde a conexão com a sala antes de compartilhar.");
+            SetStatus("Preparando o vídeo da sala…");
+            await Task.Run(() => room.ConfigureVideo(profile));
+            VideoEngine.Text = "Compressão: " + room.EncodingDescription;
+        }
         if (peer is { IsConnected: false }) throw new InvalidOperationException("Aguarde a conexão antes de transmitir.");
         if (peer != null)
         {
@@ -344,7 +391,7 @@ public partial class MainWindow : Window
             VideoEngine.Text = "Compressão: " + peer.EncodingDescription;
             VideoEngine.ToolTip = string.IsNullOrEmpty(peer.FallbackReason) ? null : peer.FallbackReason;
         }
-        else VideoEngine.Text = "Prévia local · sem compressão ou envio";
+        else if (room == null) VideoEngine.Text = "Prévia local · sem compressão ou envio";
         _captureCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
         _renderEnabled = true;
         _renderTimer.Start();
@@ -352,14 +399,19 @@ public partial class MainWindow : Window
         ResetDisplayMeasurements();
         _measurement.Restart();
         peer?.SetSending(true);
-        _captureTask = _capture.RunAsync(screen.Bounds, profile, frame =>
+        room?.SetSharing(true);
+        _captureTask = _capture.RunAsync(source, profile, frame =>
         {
             if (_captureCancellation?.IsCancellationRequested != false) return;
-            QueueFrame(frame);
+            if (room == null) QueueFrame(frame);
+            else Interlocked.Increment(ref _frameCount);
             peer?.SendFrame(frame);
+            room?.SendFrame(frame);
+            if (room != null) QueueRoomFrame(room, room.SelfId, frame);
         }, _captureCancellation.Token);
+        StartAudio();
         _ = ObserveCaptureAsync(_captureTask);
-        SetStatus(peer == null ? "Prévia local ativa. Nenhuma imagem enviada." : "Transmitindo a tela ao outro PC. Use Parar captura para interromper.");
+        SetStatus(room != null ? "Compartilhando com a sala. Use o botão vermelho para parar." : peer == null ? "Prévia local ativa. Nenhuma imagem enviada." : "Transmitindo a tela ao outro PC. Use Parar captura para interromper.");
         await Task.CompletedTask;
     }
 
@@ -378,12 +430,14 @@ public partial class MainWindow : Window
     private void ApplySidebarLayout()
     {
         Sidebar.Visibility = SidebarDivider.Visibility = _sidebarHidden ? Visibility.Collapsed : Visibility.Visible;
+        ProfileCard.Visibility = _sidebarHidden ? Visibility.Collapsed : Visibility.Visible;
         SidebarColumn.MinWidth = _sidebarHidden ? 0 : 220;
         SidebarColumn.MaxWidth = _sidebarHidden ? 0 : Math.Max(220, ContentGrid.ActualWidth - 272);
         SidebarColumn.Width = new GridLength(_sidebarHidden ? 0 : Math.Min(_sidebarWidth, SidebarColumn.MaxWidth));
         DividerColumn.Width = new GridLength(_sidebarHidden ? 0 : 12);
         var label = _sidebarHidden ? "Mostrar barra lateral" : "Ocultar barra lateral";
         SidebarToggle.ToolTip = label;
+        HeaderSettingsButton.Visibility = _sidebarHidden ? Visibility.Visible : Visibility.Collapsed;
         System.Windows.Automation.AutomationProperties.SetName(SidebarToggle, label);
     }
 
@@ -396,7 +450,7 @@ public partial class MainWindow : Window
 
     private void SaveSidebarLayout()
     {
-        if (_rememberLayout && !_preferences.Save(new(_sidebarWidth, _sidebarHidden)))
+        if (_rememberLayout && !_preferences.Save(new(_sidebarWidth, _sidebarHidden, _audioPlayback.Volume)))
             SetStatus("Não foi possível salvar o tamanho da barra lateral. Você pode continuar usando o aplicativo.");
     }
     private async Task ObserveCaptureAsync(Task task)
@@ -408,6 +462,8 @@ public partial class MainWindow : Window
             if (_captureTask != task) return;
             _renderEnabled = false;
             _peer?.SetSending(false);
+            _room?.SetSharing(false);
+            await StopAudioAsync();
             ClearImage("Captura interrompida.");
             SetStatus("Falha na captura: " + ex.Message);
         }
@@ -422,6 +478,7 @@ public partial class MainWindow : Window
     {
         _renderEnabled = false;
         _captureCancellation?.Cancel();
+        await StopAudioAsync();
         if (_captureTask != null)
         {
             try { await _captureTask; }
@@ -432,20 +489,38 @@ public partial class MainWindow : Window
         _captureCancellation?.Dispose();
         _captureCancellation = null;
         if (_peer is { IsSender: true } peer) await Task.Run(() => peer.SetSending(false));
+        _room?.SetSharing(false);
         ClearImage("Captura parada.");
     }
 
     private void QueueFrame(VideoFrame frame)
     {
         // A single-slot mailbox replaces an older unrendered frame; the UI cannot build a queue.
-        var previous = Interlocked.Exchange(ref _latestFrame, frame.Retain());
-        if (previous != null) Interlocked.Increment(ref _replacedFrames);
-        previous?.Dispose();
+        if (_frameMailbox.Queue(frame)) Interlocked.Increment(ref _replacedFrames);
         Interlocked.Increment(ref _frameCount);
     }
     private void RenderLatest(object? sender, EventArgs e)
     {
-        using var frame = Interlocked.Exchange(ref _latestFrame, null);
+        long now = Stopwatch.GetTimestamp();
+        if (_lastAudioUiAt == 0 || Stopwatch.GetElapsedTime(_lastAudioUiAt, now).TotalMilliseconds >= 100)
+        {
+            RefreshAudioStatus(); _lastAudioUiAt = now;
+        }
+        if (_room != null)
+        {
+            var visibleTile = (_focusedStream == null ? null : _tiles.GetValueOrDefault(_focusedStream)) ??
+                _tiles.GetValueOrDefault(_room.SelfId) ?? _tiles.Values.FirstOrDefault();
+            if (visibleTile != null && visibleTile.SourceWidth > 0)
+            {
+                if (!ReferenceEquals(_measuredRoomTile, visibleTile))
+                { _measuredRoomTile = visibleTile; _lastDisplayedFrames = visibleTile.PresentedFrames; }
+                if (_displayedFrames != visibleTile.PresentedFrames) _lastFrameAt = DateTime.UtcNow;
+                _displayedFrames = visibleTile.PresentedFrames;
+                _displayWidth = visibleTile.SourceWidth;
+                _displayHeight = visibleTile.SourceHeight;
+            }
+        }
+        using var frame = _frameMailbox.Take();
         if (_renderEnabled && frame != null)
         {
             long started = Stopwatch.GetTimestamp();
@@ -457,8 +532,10 @@ public partial class MainWindow : Window
                 _displayWidth = frame.Width; _displayHeight = frame.Height;
                 _lastFrameAt = DateTime.UtcNow;
                 Placeholder.Visibility = Visibility.Collapsed;
+                if (_peer is { IsSender: false, IsConnected: true } && !_remotePaused)
+                    RemoteLive.Visibility = Visibility.Visible;
             }
-            else _renderBusyFrames++;
+            else { _renderBusyFrames++; _frameMailbox.Retry(frame); }
         }
         if (_measurement.ElapsedMilliseconds < 1000) return;
         long count = Interlocked.Read(ref _frameCount);
@@ -467,9 +544,11 @@ public partial class MainWindow : Window
         _lastFrameCount = count;
         _lastDisplayedFrames = _displayedFrames;
         _measurement.Restart();
-        if (_renderEnabled && _lastFrameAt != default)
+        if ((_renderEnabled || _room != null) && _lastFrameAt != default)
         {
-            Metrics.Text = $"{_displayWidth} × {_displayHeight} · {(_peer is { IsSender: false } ? "recebidos" : "processados")} {_inputFps:F1} fps · exibidos {_displayFps:F1} fps";
+            string input = _room != null && _captureTask is not { IsCompleted: false } ? "" :
+                $"{(_peer is { IsSender: false } ? "recebidos" : "processados")} {_inputFps:F1} fps · ";
+            Metrics.Text = $"{_displayWidth} × {_displayHeight} · {input}exibidos {_displayFps:F1} fps";
             if (_peer is { IsSender: false } && !_remotePaused && DateTime.UtcNow - _lastFrameAt > TimeSpan.FromSeconds(5))
                 Metrics.Text = "Sem novos quadros há mais de 5 segundos. Verifique a conexão do outro lado.";
         }
@@ -477,7 +556,7 @@ public partial class MainWindow : Window
     private void ClearImage(string message)
     {
         _renderTimer.Stop();
-        Interlocked.Exchange(ref _latestFrame, null)?.Dispose();
+        _frameMailbox.Clear();
         _presenter.Clear();
         Preview.Source = null;
         PlaceholderText.Text = message;
@@ -485,6 +564,7 @@ public partial class MainWindow : Window
         Metrics.Text = "Aguardando novos quadros.";
         _lastFrameAt = default;
         ResetDisplayMeasurements();
+        UpdateParticipantVisuals();
     }
     private void ResetDisplayMeasurements()
     {
@@ -492,16 +572,8 @@ public partial class MainWindow : Window
         _lastFrameCount = _displayedFrames = _lastDisplayedFrames = _renderBusyFrames = 0;
         Interlocked.Exchange(ref _replacedFrames, 0);
         _inputFps = _displayFps = 0;
+        _measuredRoomTile = null; _lastAudioUiAt = 0;
         _presentTime = new();
         _measurement.Restart();
     }
 }
-
-
-
-
-
-
-
-
-

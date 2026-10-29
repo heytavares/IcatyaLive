@@ -1,8 +1,8 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-if exist "app\0.5.2\Icatya.exe" (
- start "Icatya" "app\0.5.2\Icatya.exe"
+if exist "app\0.7.2\Icatya.exe" (
+ start "iCatya" "app\0.7.2\Icatya.exe"
  exit /b 0
 )
 where dotnet >nul 2>&1

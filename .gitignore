@@ -50,3 +50,9 @@ appsettings.*.Local.json
 
 # Componentes de video baixados localmente
 /native/
+
+# Servidor de salas: dependencias, estado local e segredos
+**/node_modules/
+**/.wrangler/
+**/.dev.vars
+**/.dev.vars.*

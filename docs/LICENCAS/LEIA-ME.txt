@@ -1,0 +1,11 @@
+Componentes de áudio e captura adicionais:
+NAudio.Wasapi / NAudio.Core 2.2.1 — MIT
+https://github.com/naudio/NAudio/blob/master/license.txt
+Concentus 2.2.2 — BSD 3-Clause
+https://github.com/lostromb/concentus
+SharpDX 4.2.0 — MIT
+https://github.com/sharpdx/SharpDX/blob/master/LICENSE
+Microsoft.Windows.SDK.NET / CsWinRT — MIT
+https://github.com/microsoft/CsWinRT/blob/master/LICENSE
+Os demais componentes e as licenças do FFmpeg acompanham a pasta native/ffmpeg e os avisos do runtime.
+

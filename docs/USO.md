@@ -1,24 +1,28 @@
-# Usar o Icatya 0.5.2
+# Usar o iCatya 0.7.0
 
 ## Abrir e testar sozinho
 
 1. Feche as janelas das versões anteriores e abra **Iniciar Icatya.cmd** na pasta principal.
-2. Clique em **Testar neste PC**. Uma segunda janela será aberta como receptora.
+2. Abra a engrenagem, role até **Conexão manual** e clique em **Testar neste PC**. Uma segunda janela será aberta como receptora.
 3. Aguarde a confirmação de conexão local.
-4. Na primeira janela, clique no botão circular de compartilhar abaixo do vídeo. Escolha a tela, **720p** e **30 fps**.
+4. Na primeira janela, clique no botão circular de compartilhar abaixo do vídeo. Escolha **Telas**, selecione o monitor e clique em **Próximo**. Ajuste **720p**, **30 fps** e, se desejar, selecione aplicativos de áudio.
 5. Clique em **Iniciar transmissão** na janela de opções e confira a segunda janela.
 6. Confira o nome do codificador e os fps medidos. `h264_amf · GPU` indica AMD AMF; `libopenh264 · CPU` indica a alternativa por processador.
 7. Clique no botão vermelho de **Parar compartilhamento**. A imagem deve desaparecer do receptor. Você pode iniciar novamente ou desconectar.
 
 A seleção do monitor só começa a ser capturada ao iniciar a transmissão ou a prévia. O efeito de espelho é esperado quando o monitor compartilhado contém o próprio programa.
 
-Os perfis são metas, não garantia de desempenho. Os testes deste PC mediram perto de 30 fps no caminho de captura e transmissão. A reprodução visual e os jogos precisam ser avaliados separadamente. Nenhum áudio é enviado na versão 0.5.2.
+Os perfis são metas, não garantia de desempenho. Os testes deste PC mediram perto de 30 fps no caminho de captura e transmissão. A reprodução visual e os jogos precisam ser avaliados separadamente. O áudio começa desligado. Em Áudio de aplicativos, habilite e marque as fontes desejadas; Discord e microfone não são incluídos automaticamente. Requer Windows build 20348+. Veja NOTAS-0.7.0.md para os requisitos e limites desta versão.
 
-## Testar com um amigo
+## Entrar na sala com amigos
 
-Confira o papel no alto da coluna: **VOCÊ TRANSMITE** no PC que cria o convite; **VOCÊ ASSISTE** no PC que recebe o convite. Somente o transmissor aplica a resposta. Se houver falha, use **Copiar diagnóstico** nas duas pontas.
+Com o serviço publicado/configurado, digite seu nick e o convite ICATYA recebido. Para criar um grupo, clique em Criar uma nova sala e entre. Copie o convite na lateral e envie aos amigos: todos usam o mesmo texto. Nick e sala ficam salvos; na próxima abertura o app tenta voltar automaticamente. Cada pessoa escolhe quando compartilhar, e as telas ativas aparecem juntas. Sair não fecha a sala para os demais. Consulte SALAS-0.6.0.md.
 
-Ambos precisam da versão 0.5.2. Vocês podem continuar na chamada de voz do Discord.
+## Conexão manual alternativa
+
+Abra a engrenagem e a seção **Conexão manual**. Confira o papel: **VOCÊ TRANSMITE** no PC que cria o convite; **VOCÊ ASSISTE** no PC que recebe o convite. Somente o transmissor aplica a resposta. Se houver falha, use **Copiar diagnóstico** nas duas pontas.
+
+Para enviar e receber som, ambos precisam da versão 0.7.0. Vocês podem continuar na chamada de voz do Discord.
 
 1. Quem vai compartilhar clica em **Criar convite para transmitir**.
 2. Copia o texto gerado e envia ao amigo pelo chat privado.

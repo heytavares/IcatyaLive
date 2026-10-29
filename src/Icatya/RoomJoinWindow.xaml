@@ -1,0 +1,21 @@
+<Window x:Class="Icatya.RoomJoinWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="Entrar em uma sala · iCatya" Icon="/Icatya;component/Assets/Icatya.ico" Width="480" SizeToContent="Height" ResizeMode="NoResize" WindowStartupLocation="CenterOwner"
+ Background="{DynamicResource PanelBackground}" Foreground="{DynamicResource PrimaryText}" FontFamily="Segoe UI" FontSize="14">
+ <StackPanel Margin="28">
+  <TextBlock Text="Sua sala no iCatya" FontSize="23" FontWeight="SemiBold"/>
+  <TextBlock Text="Use o mesmo convite sempre que voltar. Seu nick e a última sala ficam salvos neste PC." Foreground="{DynamicResource SecondaryText}" Margin="0,8,0,22"/>
+  <TextBlock Text="Seu nick" FontWeight="SemiBold" Margin="0,0,0,7"/>
+  <TextBox x:Name="Nick" MaxLength="24" AcceptsReturn="False" TextWrapping="NoWrap" AutomationProperties.Name="Seu nick"/>
+  <StackPanel x:Name="NamePanel" Visibility="Collapsed" Margin="0,18,0,0"><TextBlock Text="Nome da sala" FontWeight="SemiBold" Margin="0,0,0,7"/><TextBox x:Name="RoomName" Text="Sala de amigos" MaxLength="48" AcceptsReturn="False" TextWrapping="NoWrap" AutomationProperties.Name="Nome da nova sala"/></StackPanel>
+  <TextBlock Text="Convite da sala" FontWeight="SemiBold" Margin="0,18,0,7"/>
+  <TextBox x:Name="Code" MaxLength="80" AcceptsReturn="False" FontSize="12" AutomationProperties.Name="Convite da sala"/>
+  <Button Content="Criar uma nova sala" Click="CreateRoom" Style="{StaticResource Secondary}" HorizontalAlignment="Left" Margin="0,10,0,0"/>
+  <TextBlock Text="Quem tiver o convite poderá entrar. Compartilhe apenas com seu grupo." Foreground="{DynamicResource MutedText}" FontSize="12" Margin="0,14,0,0"/>
+  <TextBlock x:Name="Error" Foreground="{DynamicResource AccentText}" Margin="0,12,0,0"/>
+  <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+   <Button Content="Agora não" IsCancel="True" Style="{StaticResource Secondary}"/>
+   <Button Content="Entrar na sala" IsDefault="True" Click="Join" Margin="0"/>
+  </StackPanel>
+ </StackPanel>
+</Window>
+

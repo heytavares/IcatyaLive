@@ -39,6 +39,7 @@ try {
         }
         finally { $graphics.Dispose(); $bitmap.Dispose(); $stream.Dispose() }
     }
+    [IO.File]::WriteAllBytes((Join-Path $assets 'BrandMark.png'), ($frames | Where-Object Size -eq 64).Bytes)
     $output = [IO.File]::Create((Join-Path $assets 'Icatya.ico'))
     $writer = New-Object IO.BinaryWriter($output)
     try {

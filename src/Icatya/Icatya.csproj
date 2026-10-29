@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <UseWPF>true</UseWPF>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UseWindowsForms>true</UseWindowsForms>
@@ -9,24 +9,26 @@
     <PlatformTarget>x64</PlatformTarget>
     <AssemblyName>Icatya</AssemblyName>
     <RootNamespace>Icatya</RootNamespace>
-    <Product>Icatya</Product>
+    <Product>iCatya</Product>
     <PackageId>icatyalive</PackageId>
-    <Version>0.5.2</Version>
+    <Version>0.7.3</Version>
+    <FileVersion>0.7.3.0</FileVersion>
+    <InformationalVersion>0.7.3+recovery.1</InformationalVersion>
     <ApplicationIcon>Assets\Icatya.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="..\..\docs\LICENCAS\*.txt" Link="licenses\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="rooms-service.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Resource Include="Assets\Icatya.ico" />
+    <Resource Include="Assets\BrandMark.png" />
+    <Resource Include="Assets\Avatars\*.png" />
     <PackageReference Include="SIPSorcery" Version="10.0.17" />
     <PackageReference Include="FFmpeg.AutoGen" Version="8.1.0" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <PackageReference Include="Concentus" Version="2.2.2" />
+    <PackageReference Include="SharpDX.Direct3D11" Version="4.2.0" />
   </ItemGroup>
 <ItemGroup Condition="Exists('..\..\native\ffmpeg')">
     <None Include="..\..\native\ffmpeg\**\*" Link="native\ffmpeg\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
-
-
-
-
-
-
-

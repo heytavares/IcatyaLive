@@ -50,9 +50,9 @@ public sealed record CaptureProfile(string Name, int Width, int Height, int Fram
     public static readonly CaptureProfile[] Available =
     [
         new("720p · 30 fps · 4 Mbps", 1280, 720, 30, 4_000_000),
-        new("720p · meta 60 fps · 6 Mbps", 1280, 720, 60, 6_000_000),
+        new("720p · 60 fps experimental · 6 Mbps", 1280, 720, 60, 6_000_000),
         new("1080p · 30 fps · 7 Mbps", 1920, 1080, 30, 7_000_000),
-        new("1080p · meta 60 fps · 10 Mbps", 1920, 1080, 60, 10_000_000)
+        new("1080p · 60 fps experimental · 10 Mbps", 1920, 1080, 60, 10_000_000)
     ];
 }
 

@@ -1,0 +1,114 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+<!-- Lucide Icons, ISC/MIT. Original paths: github.com/lucide-icons/lucide. Full notice: docs/LICENCAS/Lucide.txt. -->
+  <GeometryGroup x:Key="camera">
+    <PathGeometry Figures="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/>
+    <EllipseGeometry Center="12,13" RadiusX="3" RadiusY="3"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="check">
+    <PathGeometry Figures="M20 6 9 17l-5-5"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="chevron-down">
+    <PathGeometry Figures="m6 9 6 6 6-6"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="chevron-up">
+    <PathGeometry Figures="m18 15-6-6-6 6"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="clapperboard">
+    <PathGeometry Figures="m12.296 3.464 3.02 3.956"/>
+    <PathGeometry Figures="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z"/>
+    <PathGeometry Figures="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <PathGeometry Figures="m6.18 5.276 3.1 3.899"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="ellipsis">
+    <EllipseGeometry Center="12,12" RadiusX="1" RadiusY="1"/>
+    <EllipseGeometry Center="19,12" RadiusX="1" RadiusY="1"/>
+    <EllipseGeometry Center="5,12" RadiusX="1" RadiusY="1"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="gamepad-2">
+    <LineGeometry StartPoint="6,11" EndPoint="10,11"/>
+    <LineGeometry StartPoint="8,9" EndPoint="8,13"/>
+    <LineGeometry StartPoint="15,12" EndPoint="15.01,12"/>
+    <LineGeometry StartPoint="18,10" EndPoint="18.01,10"/>
+    <PathGeometry Figures="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="info">
+    <EllipseGeometry Center="12,12" RadiusX="10" RadiusY="10"/>
+    <PathGeometry Figures="M12 16v-4"/>
+    <PathGeometry Figures="M12 8h.01"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="layout-grid">
+    <RectangleGeometry Rect="3,3,7,7" RadiusX="1" RadiusY="1"/>
+    <RectangleGeometry Rect="14,3,7,7" RadiusX="1" RadiusY="1"/>
+    <RectangleGeometry Rect="14,14,7,7" RadiusX="1" RadiusY="1"/>
+    <RectangleGeometry Rect="3,14,7,7" RadiusX="1" RadiusY="1"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="link">
+    <PathGeometry Figures="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+    <PathGeometry Figures="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="log-out">
+    <PathGeometry Figures="m16 17 5-5-5-5"/>
+    <PathGeometry Figures="M21 12H9"/>
+    <PathGeometry Figures="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="maximize">
+    <PathGeometry Figures="M8 3H5a2 2 0 0 0-2 2v3"/>
+    <PathGeometry Figures="M21 8V5a2 2 0 0 0-2-2h-3"/>
+    <PathGeometry Figures="M3 16v3a2 2 0 0 0 2 2h3"/>
+    <PathGeometry Figures="M16 21h3a2 2 0 0 0 2-2v-3"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="monitor-up">
+    <PathGeometry Figures="m9 10 3-3 3 3"/>
+    <PathGeometry Figures="M12 13V7"/>
+    <RectangleGeometry Rect="2,3,20,14" RadiusX="2" RadiusY="2"/>
+    <PathGeometry Figures="M12 17v4"/>
+    <PathGeometry Figures="M8 21h8"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="monitor-x">
+    <PathGeometry Figures="m14.5 12.5-5-5"/>
+    <PathGeometry Figures="m9.5 12.5 5-5"/>
+    <RectangleGeometry Rect="2,3,20,14" RadiusX="2" RadiusY="2"/>
+    <PathGeometry Figures="M12 17v4"/>
+    <PathGeometry Figures="M8 21h8"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="monitor">
+    <RectangleGeometry Rect="2,3,20,14" RadiusX="2" RadiusY="2"/>
+    <LineGeometry StartPoint="8,21" EndPoint="16,21"/>
+    <LineGeometry StartPoint="12,17" EndPoint="12,21"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="panel-left">
+    <RectangleGeometry Rect="3,3,18,18" RadiusX="2" RadiusY="2"/>
+    <PathGeometry Figures="M9 3v18"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="pencil">
+    <PathGeometry Figures="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>
+    <PathGeometry Figures="m15 5 4 4"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="plus">
+    <PathGeometry Figures="M5 12h14"/>
+    <PathGeometry Figures="M12 5v14"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="search">
+    <PathGeometry Figures="m21 21-4.34-4.34"/>
+    <EllipseGeometry Center="11,11" RadiusX="8" RadiusY="8"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="settings">
+    <PathGeometry Figures="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/>
+    <EllipseGeometry Center="12,12" RadiusX="3" RadiusY="3"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="users">
+    <PathGeometry Figures="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+    <PathGeometry Figures="M16 3.128a4 4 0 0 1 0 7.744"/>
+    <PathGeometry Figures="M22 21v-2a4 4 0 0 0-3-3.87"/>
+    <EllipseGeometry Center="9,7" RadiusX="4" RadiusY="4"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="volume-2">
+    <PathGeometry Figures="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/>
+    <PathGeometry Figures="M16 9a5 5 0 0 1 0 6"/>
+    <PathGeometry Figures="M19.364 18.364a9 9 0 0 0 0-12.728"/>
+  </GeometryGroup>
+  <GeometryGroup x:Key="x">
+    <PathGeometry Figures="M18 6 6 18"/>
+    <PathGeometry Figures="m6 6 12 12"/>
+  </GeometryGroup>
+</ResourceDictionary>

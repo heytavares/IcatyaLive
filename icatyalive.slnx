@@ -4,6 +4,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Icatya.Checks/Icatya.Checks.csproj" />
+    <Project Path="tests/Icatya.CaptureProbe/Icatya.CaptureProbe.csproj" />
+    <Project Path="tests/Icatya.PresentationProbe/Icatya.PresentationProbe.csproj" />
   </Folder>
 </Solution>
-

@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch]$FunctionsOnly)
+param([switch]$FunctionsOnly, [string]$ExpectedVersion, [string]$StatusFile)
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -76,7 +76,7 @@ function Install-UpdateFiles([string]$Staged, [string]$Target, [string]$Backup) 
     }
 }
 
-function Invoke-IcatyaUpdate {
+function Invoke-IcatyaUpdateCore {
     $target = [IO.Path]::GetFullPath($PSScriptRoot)
     $executable = Join-Path $target 'Icatya.exe'
     $versionFile = Join-Path $target 'version.json'
@@ -90,6 +90,7 @@ function Invoke-IcatyaUpdate {
     catch { throw 'Nao foi possivel consultar uma versao publica no GitHub. Confira a internet e se o autor ja publicou uma Release.' }
     if ($release.draft -or $release.prerelease -or $release.tag_name -notmatch '^v?(\d+\.\d+\.\d+)$') { throw 'Versao publicada invalida.' }
     $version = $Matches[1]
+    if ($ExpectedVersion -and $version -ne $ExpectedVersion) { throw 'A Release mudou durante a consulta. Verifique as atualizacoes novamente.' }
     if ([version]$version -le $installed) { Write-Host "Voce ja esta atualizado: $installed" -ForegroundColor Green; return }
     $name = "Icatya-$version-Windows-x64.zip"
     $assets = @($release.assets | Where-Object { $_.name -eq $name -and $_.state -eq 'uploaded' })
@@ -105,7 +106,9 @@ function Invoke-IcatyaUpdate {
     try {
         $package = Join-Path $work 'update.zip'
         $staged = Join-Path $work 'staged'
-        $backup = Join-Path $work 'backup'
+        $profileRoot = $env:ICATYA_DATA_DIRECTORY
+        if ([string]::IsNullOrWhiteSpace($profileRoot)) { $profileRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Icatya' }
+        $backup = Join-Path $profileRoot ('UpdateBackups\' + $installed + '-' + [Guid]::NewGuid().ToString('N'))
         Write-Host "Baixando Icatya $version..."
         Invoke-WebRequest -UseBasicParsing -Uri $asset.browser_download_url -OutFile $package -Headers @{ 'User-Agent' = 'Icatya-Updater' } -TimeoutSec 600
         if ((Get-Item -LiteralPath $package).Length -gt 512MB) { throw 'Download excede o tamanho permitido.' }
@@ -127,7 +130,28 @@ function Invoke-IcatyaUpdate {
     }
 }
 
+function Invoke-IcatyaUpdate {
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    try { $identity = [BitConverter]::ToString($algorithm.ComputeHash([Text.Encoding]::UTF8.GetBytes($PSScriptRoot.ToLowerInvariant()))).Replace('-', '') }
+    finally { $algorithm.Dispose() }
+    $mutex = New-Object Threading.Mutex($false, ('Local\Icatya-Update-' + $identity))
+    $held = $false
+    try {
+        try { $held = $mutex.WaitOne(0) } catch [Threading.AbandonedMutexException] { $held = $true }
+        if (!$held) { throw 'Uma atualizacao desta pasta ja esta em andamento.' }
+        Invoke-IcatyaUpdateCore
+    }
+    finally { if ($held) { $mutex.ReleaseMutex() }; $mutex.Dispose() }
+}
+
 if (!$FunctionsOnly) {
     try { Invoke-IcatyaUpdate }
-    catch { Write-Host $_.Exception.Message -ForegroundColor Red; exit 1 }
+    catch {
+        $message = $_.Exception.Message
+        if ($StatusFile) {
+            try { @{ message = $message } | ConvertTo-Json | Set-Content -LiteralPath $StatusFile -Encoding UTF8 } catch { }
+        }
+        Write-Host $message -ForegroundColor Red
+        exit 1
+    }
 }

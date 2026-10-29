@@ -16,4 +16,4 @@ Pedido do usuário em 28/10/2026: selecionar quais áudios entram na live e evit
 
 ## Estado
 
-Requisito registrado. Nenhuma captura de áudio está implementada na versão 0.3.
+Implementado de forma experimental na 0.7.0. Veja [notas e verificações](NOTAS-0.7.0.md). A seleção não faz pré-escuta antes de iniciar; há indicação das fontes selecionadas e nível durante a live. Troca de dispositivo e uso com jogos reais ainda precisam ser avaliados.

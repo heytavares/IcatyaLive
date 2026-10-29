@@ -1,3 +1,5 @@
+> Atualização: a versão 0.7.1 consulta e informa o resultado dentro do app; confira [as notas atuais](NOTAS-0.7.1.md). O texto abaixo registra a implementação inicial.
+
 # Icatya 0.5.1 — atualizador e aparência
 
 O desenho do ícone agora usa cerca de 94% da largura, em vez de aproximadamente 73%. A transparência e o PNG original foram preservados. A área reservada pelo Windows na barra de tarefas permanece a mesma; o que aumentou foi o desenho dentro dela.
